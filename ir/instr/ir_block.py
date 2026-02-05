@@ -23,9 +23,17 @@ class IRSubject:
     def __str__(self) -> str:
         return "subject"
 
+_global_lb_id: int = 0
+
 class IRLabel(IRSubject):
+    def __init__(self) -> None:
+        super().__init__()
+        global _global_lb_id
+        self.id: int = _global_lb_id
+        _global_lb_id += 1
+        
     def __str__(self) -> str:
-        return f"lb"
+        return f"lb{self.id}"
 
 class IROperation(IRSubject):
     def __init__(self, op: str) -> None:
@@ -71,7 +79,11 @@ class IRBlock:
             return f"{self.a.value}({self.subjects[0]})"
         return f"{self.a.value}"
 
+_global_bb_id: int = 0
+
 class IRBaseBlockLabel(IRBlock):
-    def __init__(self, id: int) -> None:
+    def __init__(self) -> None:
         super().__init__(IRAction.BB)
-        self.id: int = id
+        global _global_bb_id
+        self.id: int = _global_bb_id
+        _global_bb_id += 1

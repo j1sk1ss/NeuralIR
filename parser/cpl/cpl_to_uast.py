@@ -607,8 +607,8 @@ class CplParser:
         n = self.parse_primary()
         while True:
             if self.at("("):
-                lpar = self.consume()
-                call = FunctionCallNode(lpar)
+                self.consume()
+                call = FunctionCallNode(n.token)
                 call.add_child(n)
                 if not self.at(")"):
                     call.add_child(self.parse_expression())

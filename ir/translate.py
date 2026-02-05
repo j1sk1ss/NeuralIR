@@ -62,14 +62,15 @@ class Translator:
         self.ctx.append(IRBlock(a=IRAction.FCALL, x=IRFunction(name=node.get_name())))
     
     def translate_rexit_node(self, node: RExitNode) -> None:
+        self.translate_uast_node(node.get_retval())
         self.ctx.append(IRBlock(a=IRAction.TERM))
     
     def translate_loop_node(self, node: LoopNode) -> None:
-        entry_lb: IRSubject  = IRLabel()
-        body_lb: IRSubject   = IRLabel()
-        exit_lb: IRSubject   = IRLabel()
+        entry_lb: IRSubject = IRLabel()
+        body_lb: IRSubject  = IRLabel()
+        exit_lb: IRSubject  = IRLabel()
         self.ctx.append(IRBlock(a=IRAction.MKLB, x=entry_lb))
-        self.ctx.append(IRBlock(a=IRAction.LOOP))
+        # self.ctx.append(IRBlock(a=IRAction.LOOP))
         
         self.translate_uast_node(node.get_cond())
         self.ctx.append(IRBlock(a=IRAction.IF, x=body_lb, y=exit_lb))

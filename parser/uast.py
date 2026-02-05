@@ -71,6 +71,9 @@ class RExitNode(UastNode):
     def __init__(self, token: Token) -> None:
         super().__init__(token)
        
+    def get_retval(self) -> UastNode:
+        return self.childs[0]
+       
     def __str__(self) -> str:
         return "RExitNode"
         

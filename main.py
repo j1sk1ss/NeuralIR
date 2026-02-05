@@ -3,6 +3,7 @@ from parser.parser import (
 )
 
 from ir.translate import Translator
+from ir.printer import pretty_print_ir
 from ir.instr.ir_block import IRBlock
 
 code = r"""
@@ -27,6 +28,4 @@ uast.print_uast()
 
 translator: Translator = Translator(root=uast)
 instructions: list[IRBlock] = translator.translate()
-
-for instr in instructions:
-  print(instr)
+print(pretty_print_ir(instructions))
