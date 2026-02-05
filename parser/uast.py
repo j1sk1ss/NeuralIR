@@ -1,4 +1,6 @@
 from __future__ import annotations
+from enum import Enum
+
 from abc import abstractmethod
 from parser.tokenizer import Token
 
@@ -101,18 +103,77 @@ class DeclarationNode(UastNode):
     def __str__(self) -> str:
         return "DeclarationNode"
 
+class Operations(Enum):
+    DREF = 1
+    REF = 2
+    ADD = 3
+    SUB = 4
+    DIV = 5
+    ASSIGN = 6
+    ADDASSIGN = 7
+
+    MUL = 8
+    MOD = 9
+    POW = 10
+
+    SUBASSIGN = 11
+    MULASSIGN = 12
+    DIVASSIGN = 13
+    MODASSIGN = 14
+
+    AND = 15          # &&
+    OR = 16           # ||
+    XOR = 17          # ^
+    NOT = 18          # !
+
+    SHL = 19          # <<
+    SHR = 20          # >>
+
+    ANDASSIGN = 21    # &=
+    ORASSIGN = 22     # |=
+    XORASSIGN = 23    # ^=
+    SHLASSIGN = 24    # <<=
+    SHRASSIGN = 25    # >>=
+
+    EQ = 26
+    NE = 27
+    LT = 28
+    LE = 29
+    GT = 30
+    GE = 31
+
+    BITAND = 32       # &
+    BITOR = 33        # |
+
+    INC = 34          # ++
+    DEC = 35          # --
+
+    NEG = 36          # -
+    POS = 37          # +
+
+    BITNOT = 38       # ~
+
+    COMMA = 39        # ,
+    TERNARY = 40      # ?:
+    INDEX = 41        # []
+    CALL = 42         # ()
+    MEMBER = 43       # .
+    PTR_MEMBER = 44   # ->
+    
+    CAST = 45
+
 class BinaryNode(UastNode):
-    def __init__(self, token: Token, op: str) -> None:
+    def __init__(self, token: Token, op: Operations) -> None:
         super().__init__(token)
-        self.op: str = op
+        self.op: Operations = op
         
     def __str__(self) -> str:
-        return f"BinaryNode(op={self.op})"
+        return f"BinaryNode(op={self.op.name})"
 
 class UnaryNode(UastNode):
-    def __init__(self, token: Token, op: str) -> None:
+    def __init__(self, token: Token, op: Operations) -> None:
         super().__init__(token)
-        self.op: str = op
+        self.op: Operations = op
         
     def __str__(self) -> str:
-        return f"UnaryOp(op={self.op})"
+        return f"UnaryOp(op={self.op.name})"

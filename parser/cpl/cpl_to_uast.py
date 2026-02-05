@@ -1,12 +1,60 @@
 from __future__ import annotations
 from typing import List
 
-from parser.tokenizer import Token
+from parser.tokenizer import ScopeToken, Token
 from parser.uast import (
     UastNode, FunctionNode, FunctionCallNode,
     RExitNode, LoopNode, SwitchNode, DeclarationNode,
-    BinaryNode, UnaryNode, ConditionNode, ElseNode
+    BinaryNode, UnaryNode, ConditionNode, ElseNode,
+    Operations
 )
+
+CPL_BINARY_OPERATOR_MAP = {
+    "+": Operations.ADD,
+    "-": Operations.SUB,
+    "*": Operations.MUL,
+    "/": Operations.DIV,
+    "%": Operations.MOD,
+
+    "=": Operations.ASSIGN,
+    "+=": Operations.ADDASSIGN,
+    "-=": Operations.SUBASSIGN,
+    "*=": Operations.MULASSIGN,
+    "/=": Operations.DIVASSIGN,
+    "%=": Operations.MODASSIGN,
+
+    "==": Operations.EQ,
+    "!=": Operations.NE,
+    "<": Operations.LT,
+    "<=": Operations.LE,
+    ">": Operations.GT,
+    ">=": Operations.GE,
+
+    "&&": Operations.AND,
+    "||": Operations.OR,
+
+    "&": Operations.BITAND,
+    "|": Operations.BITOR,
+    "^": Operations.XOR,
+    "<<": Operations.SHL,
+    ">>": Operations.SHR,
+
+    "&=": Operations.ANDASSIGN,
+    "|=": Operations.ORASSIGN,
+    "^=": Operations.XORASSIGN,
+    "<<=": Operations.SHLASSIGN,
+    ">>=": Operations.SHRASSIGN,
+}
+
+CPL_UNARY_OPERATOR_MAP = {
+    "+": Operations.POS,       # +a
+    "-": Operations.NEG,       # -a
+    "not": Operations.NOT,     # !a
+    "~": Operations.BITNOT,    # ~a
+    "dref": Operations.DREF,   # *ptr
+    "ref": Operations.REF,     # &var
+    "as": Operations.CAST
+}
 
 def _make_token(kind: str, value: str) -> Token:
     return Token(kind=kind, value=value)
@@ -67,7 +115,7 @@ class CplParser:
 
     def parse_program(self) -> UastNode:
         self.expect("{")
-        root = UastNode(_make_token("scope", "{}"))
+        root = UastNode(ScopeToken())
 
         while not self.at("}"):
             root.add_child(self.parse_top_item())
@@ -198,7 +246,7 @@ class CplParser:
 
     def parse_block(self) -> UastNode:
         self.expect("{")
-        b = UastNode(_make_token("block", "{}"))
+        b = UastNode(ScopeToken())
         while not self.at("}"):
             b.add_child(self.parse_statement())
         self.expect("}")
@@ -288,7 +336,7 @@ class CplParser:
 
     def parse_arr_value(self) -> UastNode:
         self.expect("{")
-        n = UastNode(_make_token("array_data", "{}"))
+        n = UastNode(ScopeToken())
         if not self.at("}"):
             n.add_child(self.parse_expression())
             while self.at(","):
@@ -430,7 +478,7 @@ class CplParser:
         if self.peek().value in ("=","+=","-=","*=","/=","%=","|=","^=","&=","||=","&&="):
             op = self.consume()
             right = self.parse_assign()
-            n = BinaryNode(op, op=op.value)
+            n = BinaryNode(op, op=CPL_BINARY_OPERATOR_MAP.get(op.value, Operations.ADD))
             n.add_child(left)
             n.add_child(right)
             return n
@@ -441,7 +489,9 @@ class CplParser:
         while self.at("||"):
             op = self.consume()
             r = self.parse_logical_and()
-            b = BinaryNode(op, op=op.value); b.add_child(n); b.add_child(r)
+            b = BinaryNode(op, op=CPL_BINARY_OPERATOR_MAP.get(op.value, Operations.ADD)) 
+            b.add_child(n) 
+            b.add_child(r)
             n = b
         return n
 
@@ -450,7 +500,9 @@ class CplParser:
         while self.at("&&"):
             op = self.consume()
             r = self.parse_bit_or()
-            b = BinaryNode(op, op=op.value); b.add_child(n); b.add_child(r)
+            b = BinaryNode(op, op=CPL_BINARY_OPERATOR_MAP.get(op.value, Operations.ADD))
+            b.add_child(n)
+            b.add_child(r)
             n = b
         return n
 
@@ -459,7 +511,9 @@ class CplParser:
         while self.at("|"):
             op = self.consume()
             r = self.parse_bit_xor()
-            b = BinaryNode(op, op=op.value); b.add_child(n); b.add_child(r)
+            b = BinaryNode(op, op=CPL_BINARY_OPERATOR_MAP.get(op.value, Operations.ADD))
+            b.add_child(n)
+            b.add_child(r)
             n = b
         return n
 
@@ -468,7 +522,9 @@ class CplParser:
         while self.at("^"):
             op = self.consume()
             r = self.parse_bit_and()
-            b = BinaryNode(op, op=op.value); b.add_child(n); b.add_child(r)
+            b = BinaryNode(op, op=CPL_BINARY_OPERATOR_MAP.get(op.value, Operations.ADD))
+            b.add_child(n)
+            b.add_child(r)
             n = b
         return n
 
@@ -477,7 +533,9 @@ class CplParser:
         while self.at("&"):
             op = self.consume()
             r = self.parse_equality()
-            b = BinaryNode(op, op=op.value); b.add_child(n); b.add_child(r)
+            b = BinaryNode(op, op=CPL_BINARY_OPERATOR_MAP.get(op.value, Operations.ADD))
+            b.add_child(n)
+            b.add_child(r)
             n = b
         return n
 
@@ -486,7 +544,9 @@ class CplParser:
         while self.peek().value in ("==","!="):
             op = self.consume()
             r = self.parse_relational()
-            b = BinaryNode(op, op=op.value); b.add_child(n); b.add_child(r)
+            b = BinaryNode(op, op=CPL_BINARY_OPERATOR_MAP.get(op.value, Operations.ADD))
+            b.add_child(n)
+            b.add_child(r)
             n = b
         return n
 
@@ -495,7 +555,9 @@ class CplParser:
         while self.peek().value in ("<","<=",">",">="):
             op = self.consume()
             r = self.parse_shift()
-            b = BinaryNode(op, op=op.value); b.add_child(n); b.add_child(r)
+            b = BinaryNode(op, op=CPL_BINARY_OPERATOR_MAP.get(op.value, Operations.ADD))
+            b.add_child(n)
+            b.add_child(r)
             n = b
         return n
 
@@ -504,7 +566,9 @@ class CplParser:
         while self.peek().value in ("<<",">>"):
             op = self.consume()
             r = self.parse_add()
-            b = BinaryNode(op, op=op.value); b.add_child(n); b.add_child(r)
+            b = BinaryNode(op, op=CPL_BINARY_OPERATOR_MAP.get(op.value, Operations.ADD))
+            b.add_child(n)
+            b.add_child(r)
             n = b
         return n
 
@@ -513,7 +577,9 @@ class CplParser:
         while self.peek().value in ("+","-"):
             op = self.consume()
             r = self.parse_mul()
-            b = BinaryNode(op, op=op.value); b.add_child(n); b.add_child(r)
+            b = BinaryNode(op, op=CPL_BINARY_OPERATOR_MAP.get(op.value, Operations.ADD))
+            b.add_child(n)
+            b.add_child(r)
             n = b
         return n
 
@@ -522,7 +588,9 @@ class CplParser:
         while self.peek().value in ("*","/","%"):
             op = self.consume()
             r = self.parse_unary()
-            b = BinaryNode(op, op=op.value); b.add_child(n); b.add_child(r)
+            b = BinaryNode(op, op=CPL_BINARY_OPERATOR_MAP.get(op.value, Operations.ADD))
+            b.add_child(n)
+            b.add_child(r)
             n = b
         return n
 
@@ -530,7 +598,7 @@ class CplParser:
         if self.peek().value in ("not","+","-","ref","dref"):
             op = self.consume()
             expr = self.parse_unary()
-            u = UnaryNode(op, op=op.value)
+            u = UnaryNode(op, op=CPL_UNARY_OPERATOR_MAP.get(op.value, Operations.DREF))
             u.add_child(expr)
             return u
         return self.parse_postfix()
@@ -566,7 +634,7 @@ class CplParser:
             if self.at("as"):
                 op = self.consume()
                 ty = self.parse_type()
-                cast = UnaryNode(op, op="as")
+                cast = UnaryNode(op, op=Operations.CAST)
                 cast.add_child(n)
                 cast.add_child(UastNode(Token("TYPE", ty)))
                 n = cast

@@ -10,7 +10,8 @@ class Token:
 
 class ScopeToken(Token):
     def __init__(self) -> None:
-        super().__init__(None)
+        self.kind  = "scope"
+        self.value = "scope"
 
 class Tokenizer:
     def __init__(self, file: str) -> list[Token]:

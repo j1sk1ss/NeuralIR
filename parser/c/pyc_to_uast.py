@@ -1,13 +1,61 @@
 from pycparser import CParser, c_ast
 from typing import Optional
 
-from parser.tokenizer import Token
+from parser.tokenizer import Token, ScopeToken
 from parser.uast import (
     UastNode, FunctionNode, FunctionCallNode,
     RExitNode, LoopNode, SwitchNode, DeclarationNode,
     BinaryNode, UnaryNode, ConditionNode, ElseNode, 
-    ConditionElseNode
+    ConditionElseNode, Operations
 )
+
+C_BINARY_OPERATOR_MAP = {
+    "+": Operations.ADD,
+    "-": Operations.SUB,
+    "*": Operations.MUL,
+    "/": Operations.DIV,
+    "%": Operations.MOD,
+
+    "=": Operations.ASSIGN,
+    "+=": Operations.ADDASSIGN,
+    "-=": Operations.SUBASSIGN,
+    "*=": Operations.MULASSIGN,
+    "/=": Operations.DIVASSIGN,
+    "%=": Operations.MODASSIGN,
+
+    "==": Operations.EQ,
+    "!=": Operations.NE,
+    "<": Operations.LT,
+    "<=": Operations.LE,
+    ">": Operations.GT,
+    ">=": Operations.GE,
+
+    "&&": Operations.AND,
+    "||": Operations.OR,
+
+    "&": Operations.BITAND,
+    "|": Operations.BITOR,
+    "^": Operations.XOR,
+    "<<": Operations.SHL,
+    ">>": Operations.SHR,
+
+    "&=": Operations.ANDASSIGN,
+    "|=": Operations.ORASSIGN,
+    "^=": Operations.XORASSIGN,
+    "<<=": Operations.SHLASSIGN,
+    ">>=": Operations.SHRASSIGN,
+}
+
+C_UNARY_OPERATOR_MAP = {
+    "+": Operations.POS,       # +a
+    "-": Operations.NEG,       # -a
+    "!": Operations.NOT,       # !a
+    "~": Operations.BITNOT,    # ~a
+    "*": Operations.DREF,      # *ptr
+    "&": Operations.REF,       # &var
+    "++": Operations.INC,
+    "--": Operations.DEC
+}
 
 def _decl_type_to_str(type_node: c_ast.Node) -> str:
     if type_node is None:
@@ -153,7 +201,7 @@ class PycparserToUast:
             return u
 
         if isinstance(node, c_ast.Assignment):
-            u = BinaryNode(_make_token("Assign", node.op, node.coord), op=node.op)
+            u = BinaryNode(_make_token("Assign", node.op, node.coord), op=C_BINARY_OPERATOR_MAP.get(node.op, Operations.ADD))
             l = self.convert(node.lvalue)
             r = self.convert(node.rvalue)
             if l:
@@ -163,7 +211,7 @@ class PycparserToUast:
             return u
 
         if isinstance(node, c_ast.BinaryOp):
-            u = BinaryNode(_make_token("BinOp", node.op, node.coord), op=node.op)
+            u = BinaryNode(_make_token("BinOp", node.op, node.coord), op=C_BINARY_OPERATOR_MAP.get(node.op, Operations.ADD))
             l = self.convert(node.left)
             r = self.convert(node.right)
             if l:
@@ -173,7 +221,7 @@ class PycparserToUast:
             return u
 
         if isinstance(node, c_ast.UnaryOp):
-            u = UnaryNode(_make_token("UnOp", node.op, node.coord), op=node.op)
+            u = UnaryNode(_make_token("UnOp", node.op, node.coord), op=C_UNARY_OPERATOR_MAP.get(node.op, Operations.DREF))
             e = self.convert(node.expr)
             if e:
                 u.add_child(e)
@@ -202,7 +250,7 @@ class PycparserToUast:
             return UastNode(_make_token("Const", str(node.value), node.coord))
 
         if isinstance(node, c_ast.Compound):
-            u = UastNode(_make_token("Block", "{}", node.coord))
+            u = UastNode(ScopeToken())
             for st in node.block_items or []:
                 su = self.convert(st)
                 if su:
