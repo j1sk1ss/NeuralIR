@@ -43,12 +43,26 @@ class FunctionNode(UastNode):
     def __init__(self, token: Token) -> None:
         super().__init__(token)
         
+    def get_name(self) -> str:
+        return self.token.value
+        
+    def get_body(self) -> UastNode:
+        if not self.childs:
+            return None
+        return self.childs[-1]
+        
     def __str__(self) -> str:
         return f"FunctionNode(name={self.token.value})"
         
 class FunctionCallNode(UastNode):
     def __init__(self, token: Token) -> None:
         super().__init__(token)
+        
+    def get_name(self) -> str:
+        return self.token.value
+        
+    def get_args(self) -> UastNode:
+        return self.childs[0]
         
     def __str__(self) -> str:
         return f"FunctionCallNode(name={self.token.value})"
@@ -64,12 +78,30 @@ class LoopNode(UastNode):
     def __init__(self, token: Token) -> None:
         super().__init__(token)
 
+    def get_cond(self) -> UastNode:
+        return self.childs[0]
+
+    def get_body(self) -> UastNode:
+        return self.childs[-1]
+
     def __str__(self) -> str:
         return "LoopNode"
 
 class SwitchNode(UastNode):
     def __init__(self, token: Token) -> None:
         super().__init__(token)
+        
+    def get_cond(self) -> UastNode:
+        return self.childs[0]
+        
+    def get_case(self, index: int) -> UastNode | None:
+        cases: UastNode = self.childs[1]
+        for i in cases.childs:
+            index -= 1
+            if index < 0:
+                return i
+            
+        return None
         
     def __str__(self) -> str:
         return "SwitchNode"
@@ -78,12 +110,26 @@ class ConditionNode(UastNode):
     def __init__(self, token: Token) -> None:
         super().__init__(token)
         
+    def get_cond(self) -> UastNode:
+        return self.childs[0]
+        
+    def get_true(self) -> UastNode:
+        return self.childs[1]
+        
+    def get_false(self) -> UastNode | None:
+        if len(self.childs) >= 2:
+            return self.childs[2]
+        return None
+        
     def __str__(self) -> str:
         return "ConditionNode"
 
 class ConditionElseNode(UastNode):
     def __init__(self, token: Token) -> None:
         super().__init__(token)
+        
+    def get_cond(self) -> ConditionNode:
+        return self.childs[0]
         
     def __str__(self) -> str:
         return "ConditionElseNode"
@@ -92,6 +138,9 @@ class ElseNode(UastNode):
     def __init__(self, token: Token) -> None:
         super().__init__(token)
         
+    def get_body(self) -> UastNode:
+        return self.childs[0]
+        
     def __str__(self) -> str:
         return "ElseNode"
 
@@ -99,6 +148,14 @@ class DeclarationNode(UastNode):
     def __init__(self, token: Token, type: str) -> None:
         super().__init__(token)
         self.type: str = type
+        
+    def get_type(self) -> str:
+        return self.type
+        
+    def get_val(self) -> UastNode | None:
+        if not self.childs:
+            return None
+        return self.childs[0]
         
     def __str__(self) -> str:
         return "DeclarationNode"
@@ -167,6 +224,9 @@ class BinaryNode(UastNode):
         super().__init__(token)
         self.op: Operations = op
         
+    def get_op(self) -> Operations:
+        return self.op
+        
     def __str__(self) -> str:
         return f"BinaryNode(op={self.op.name})"
 
@@ -174,6 +234,9 @@ class UnaryNode(UastNode):
     def __init__(self, token: Token, op: Operations) -> None:
         super().__init__(token)
         self.op: Operations = op
+        
+    def get_op(self) -> Operations:
+        return self.op
         
     def __str__(self) -> str:
         return f"UnaryOp(op={self.op.name})"

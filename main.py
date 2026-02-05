@@ -1,24 +1,32 @@
-from pycparser import CParser
-from parser.c.pyc_to_uast import c_code_to_uast
-from parser.cpl.cpl_to_uast import cpl_code_to_uast
+from parser.parser import (
+  Parser, ParserConfig, Language
+)
 
-ccode = r"""
-int main() {
-  int* a;
-  int b = *a;
-}
-"""
+from ir.translate import Translator
+from ir.instr.ir_block import IRBlock
 
-cplcode = r"""{
+code = r"""
+{
+  function foo();
   function main() {
-    ptr i32 a;
-    i32 b = dref a;
+    while 1; {
+      while 1; {
+        foo();
+      }
+    }
   }
 }
 """
 
-uast = c_code_to_uast(ccode)
+parser: Parser = Parser(
+  conf=ParserConfig(code=code, lang=Language.CPL)
+)
+
+uast = parser.parse()
 uast.print_uast()
 
-uast = cpl_code_to_uast(cplcode)
-uast.print_uast()
+translator: Translator = Translator(root=uast)
+instructions: list[IRBlock] = translator.translate()
+
+for instr in instructions:
+  print(instr)
