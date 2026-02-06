@@ -22,7 +22,8 @@ from ir.cfg.dom import (
 
 from ir.loop.ltree import (
   LoopNode,
-  generate_loop_tree
+  generate_loop_tree,
+  find_loop
 )
 
 from ir.loop.linfo import (
@@ -41,31 +42,31 @@ if __name__ == "__main__":
     function main() {
       while 1; {
         while 1; {
-          foo();
+          while 1; {
+            foo();
+          }
           foo();
         }
-        
-        break;
       }
     }
   }
   """
 
-  print(f"1. Code: {code}")
+  print(f"\n1. Code: {code}")
   parser: Parser = Parser(
     conf=ParserConfig(code=code, lang=Language.CPL)
   )
 
-  print("2. UAST:")
+  print("\n2. UAST:")
   uast = parser.parse()
   uast.print_uast()
 
-  print("3. UIR:")
+  print("\n3. UIR:")
   translator: Translator = Translator(root=uast)
   instructions: list[IRBlock] = translator.translate()
   print(pretty_print_ir(instructions, style=PrintStyle(show_index=False)))
 
-  print("4. CFG:")
+  print("\n4. CFG:")
   funcs: list[CFGFunction] = get_blocks_from_ir(instructions=instructions)
   link_blocks(funcs=funcs)
   complete_successors(funcs=funcs)
@@ -81,7 +82,7 @@ if __name__ == "__main__":
     print("4.3 UIRv2:")
     print(pretty_print_ir(give_flatten_instructions(f=func), style=PrintStyle(show_index=True)))
     
-  print("5. LOOP:")
+  print("\n5. LOOP:")
   loops: list[LoopNode] = generate_loop_tree(funcs=funcs)
   def _print_loop(loop: LoopNode, loops: list[LoopNode]) -> None:
     print(f"loop: {str(loop)}, Info: {gather_loop_info(loops=loops, trg=loop)}")
@@ -91,13 +92,18 @@ if __name__ == "__main__":
   for loop in loops:
     _print_loop(loop=loop, loops=loops)
     
-  print("6. Funcs info:")
+  print("\n6. Funcs info:")
   for func in funcs:
     print(f"{func.func} / {gather_function_info(f=func)}")
     
-  print("7. FOO() instruction:")
+  print("\n7. FOO() instruction:")
   for func in funcs:
     for block in func.blocks:
+      loop: LoopNode = find_loop(block=block, loops=loops)
       for inst in block.instrs:
         if inst.a == IRAction.FCALL:
-          print(f"fcall / {gather_instruction_info(f=func, bb=block, inst=inst)}")
+          print(
+            f"{inst.subjects[0].name}():\n \
+ - {gather_instruction_info(f=func, bb=block, inst=inst)}\n \
+ - {gather_loop_info(loops=loops, trg=loop)}"
+          )
