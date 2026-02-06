@@ -1,6 +1,6 @@
 from __future__ import annotations
-from dataclasses import dataclass
-from typing import Iterable, Any
+from typing import Any
+from ir.cfg.cfg import CFGFunction
 
 def _escape_dot(s: str) -> str:
     return (
@@ -77,10 +77,9 @@ def cfg_to_dot(
         used_any = False
 
         if prefer_succ and succ:
-            for k, dsts in succ.items():
-                for dst in dsts:
-                    add_edge(src, dst, label=f"succ:{k}")
-                    used_any = True
+            for dst in succ:
+                add_edge(src, dst, label=f"succ:{dst}")
+                used_any = True
 
         should_draw_jmp_lin = (not prefer_succ) or (not used_any)
 
@@ -99,6 +98,24 @@ def cfg_to_dot(
             for k, dsts in succ.items():
                 for dst in dsts:
                     add_edge(src, dst, label=f"succ:{k}")
+
+    lines.append("}")
+    return "\n".join(lines)
+
+def dom_tree_to_dot(f: CFGFunction, name="DomTree") -> str:
+    lines = [f"digraph {name} {{"]
+    lines.append('  rankdir=TB;')
+    lines.append('  node [shape=box];')
+
+    for b in f.blocks:
+        label = f"B{b.id}\\l{b.start}..{b.end}\\l"
+        lines.append(f'  "B{b.id}" [label="{label}"];')
+
+    for b in f.blocks:
+        if b.sdom is not None:
+            lines.append(
+                f'  "B{b.sdom.id}" -> "B{b.id}";'
+            )
 
     lines.append("}")
     return "\n".join(lines)

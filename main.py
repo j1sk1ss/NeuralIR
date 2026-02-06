@@ -6,11 +6,17 @@ from ir.translate import Translator
 from ir.instr.ir_block import IRBlock
 from ir.printer import pretty_print_ir
 
-from ir.cfg.printer import cfg_to_dot
-from ir.cfg.cfg import CFGBlock
+from ir.cfg.printer import cfg_to_dot, dom_tree_to_dot
+from ir.cfg.cfg import CFGFunction
 from ir.cfg.cfggen import (
   get_blocks_from_ir,
   link_blocks
+)
+
+from ir.cfg.dom import (
+  complete_successors,
+  compute_function_dom,
+  compute_strict_dom
 )
 
 if __name__ == "__main__":
@@ -42,6 +48,14 @@ if __name__ == "__main__":
   print(pretty_print_ir(instructions))
 
   print("3. CFG:")
-  bblocks: list[CFGBlock] = get_blocks_from_ir(instructions=instructions)
-  link_blocks(blocks=bblocks)
-  print(cfg_to_dot(blocks=bblocks, show_instrs=False))
+  funcs: list[CFGFunction] = get_blocks_from_ir(instructions=instructions)
+  link_blocks(funcs=funcs)
+  complete_successors(funcs=funcs)
+  for func in funcs:
+    print(f"3.1 func{func.id}:")
+    print(cfg_to_dot(blocks=func.blocks, show_instrs=False))
+    
+    print(f"3.2 Dominators:")
+    compute_function_dom(f=func)
+    compute_strict_dom(f=func)
+    print(dom_tree_to_dot(f=func))
