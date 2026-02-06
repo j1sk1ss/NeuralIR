@@ -608,20 +608,25 @@ class CplParser:
         while True:
             if self.at("("):
                 self.consume()
+
                 call = FunctionCallNode(n.token)
-                call.add_child(n)
+
+                args = UastNode(Token("Args", "args"))
                 if not self.at(")"):
                     call.add_child(self.parse_expression())
                     while self.at(","):
                         self.consume()
                         call.add_child(self.parse_expression())
+                call.add_child(args)
                 self.expect(")")
+
                 n = call
                 continue
 
             if self.at("["):
                 op = self.consume()
-                idx = BinaryNode(op, op="[]")
+                idx = BinaryNode(op, op=Operations.INDEX)
+
                 idx.add_child(n)
                 idx.add_child(self.parse_expression())
                 while self.at(","):
