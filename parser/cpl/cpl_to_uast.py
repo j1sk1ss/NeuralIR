@@ -274,9 +274,7 @@ class CplParser:
         if t.value == "exit":
             return self.parse_exit()
         if t.value == "break":
-            self.consume()
-            self.expect(";")
-            return UastNode(Token("KW", "break"))
+            return self.parse_break()
         if t.value == "syscall":
             return self.parse_syscall()
         if t.value == "asm":
@@ -463,6 +461,11 @@ class CplParser:
             return self.consume().value
 
         raise ParseError(f"Expected type, got {t.kind}('{t.value}') at {t.line}:{t.col}")
+
+    def parse_break(self) -> UastNode:
+        kw = self.expect("break")
+        self.expect(";")
+        return UastNode(kw)
 
     def parse_literal(self) -> UastNode:
         t = self.peek()

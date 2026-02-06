@@ -7,13 +7,14 @@ from parser.uast import (
     UastNode, FunctionNode, FunctionCallNode,
     RExitNode, LoopNode, SwitchNode, DeclarationNode,
     BinaryNode, UnaryNode, ConditionNode, ElseNode, 
-    ConditionElseNode
+    ConditionElseNode, BreakNode
 )
 
 class Translator:
     def __init__(self, root: UastNode) -> None:
         self.root: UastNode = root
         self.ctx: list[IRBlock] = []
+        self.brk_ctx: list[IRLabel] = []
         
     def translate(self) -> list[IRBlock]:
         self.translate_uast_node(self.root)
@@ -45,6 +46,8 @@ class Translator:
             self.translate_conditionelse_node(node)
         elif isinstance(node, ElseNode):
             self.translate_else_node(node)
+        elif isinstance(node, BreakNode):
+            self.translate_break_node(node)
         else:
             if node.childs:
                 for child in node.childs:
@@ -65,6 +68,10 @@ class Translator:
         self.translate_uast_node(node.get_retval())
         self.ctx.append(IRBlock(a=IRAction.TERM))
     
+    def translate_break_node(self, node: BreakNode) -> None:
+        self.ctx.append(IRBlock(a=IRAction.BREAK))
+        self.ctx.append(IRBlock(a=IRAction.JMP, x=self.brk_ctx.pop()))
+    
     def translate_loop_node(self, node: LoopNode) -> None:
         entry_lb: IRSubject = IRLabel()
         body_lb: IRSubject  = IRLabel()
@@ -76,6 +83,7 @@ class Translator:
         self.ctx.append(IRBlock(a=IRAction.IF, x=body_lb, y=exit_lb))
         
         self.ctx.append(IRBlock(a=IRAction.MKLB, x=body_lb))
+        self.brk_ctx.append(exit_lb)
         self.translate_uast_node(node.get_body())
         self.ctx.append(IRBlock(a=IRAction.JMP, x=entry_lb))
         
@@ -91,6 +99,7 @@ class Translator:
             false_lb: IRSubject = IRLabel()
             self.ctx.append(IRBlock(a=IRAction.IF, x=true_lb, y=false_lb))
             self.ctx.append(IRBlock(a=IRAction.MKLB, x=true_lb))
+            self.brk_ctx.append(false_lb)
             self.translate_uast_node(node.get_case(case_index))
             self.ctx.append(IRBlock(a=IRAction.MKLB, x=false_lb))
             case_index += 1

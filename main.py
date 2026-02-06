@@ -19,6 +19,11 @@ from ir.cfg.dom import (
   compute_strict_dom
 )
 
+from ir.loop.ltree import (
+  LoopNode,
+  generate_loop_tree
+)
+
 if __name__ == "__main__":
   code = r"""
   {
@@ -27,6 +32,7 @@ if __name__ == "__main__":
       while 1; {
         while 1; {
           foo();
+          break;
         }
       }
     }
@@ -59,3 +65,13 @@ if __name__ == "__main__":
     compute_function_dom(f=func)
     compute_strict_dom(f=func)
     print(dom_tree_to_dot(f=func))
+    
+  print("4. LOOP:")
+  loops: list[LoopNode] = generate_loop_tree(funcs=funcs)
+  def _print_loop(loop: LoopNode) -> None:
+    print(f"loop: {str(loop)}")
+    for child in loop.childs:
+      _print_loop(loop=child)
+  
+  for loop in loops:
+    _print_loop(loop=loop)

@@ -6,55 +6,55 @@ from parser.uast import (
     UastNode, FunctionNode, FunctionCallNode,
     RExitNode, LoopNode, SwitchNode, DeclarationNode,
     BinaryNode, UnaryNode, ConditionNode, ElseNode, 
-    ConditionElseNode, Operations
+    ConditionElseNode, Operations, BreakNode
 )
 
 C_BINARY_OPERATOR_MAP = {
-    "+": Operations.ADD,
-    "-": Operations.SUB,
-    "*": Operations.MUL,
-    "/": Operations.DIV,
-    "%": Operations.MOD,
+    "+":   Operations.ADD,
+    "-":   Operations.SUB,
+    "*":   Operations.MUL,
+    "/":   Operations.DIV,
+    "%":   Operations.MOD,
 
-    "=": Operations.ASSIGN,
-    "+=": Operations.ADDASSIGN,
-    "-=": Operations.SUBASSIGN,
-    "*=": Operations.MULASSIGN,
-    "/=": Operations.DIVASSIGN,
-    "%=": Operations.MODASSIGN,
+    "=":   Operations.ASSIGN,
+    "+=":  Operations.ADDASSIGN,
+    "-=":  Operations.SUBASSIGN,
+    "*=":  Operations.MULASSIGN,
+    "/=":  Operations.DIVASSIGN,
+    "%=":  Operations.MODASSIGN,
 
-    "==": Operations.EQ,
-    "!=": Operations.NE,
-    "<": Operations.LT,
-    "<=": Operations.LE,
-    ">": Operations.GT,
-    ">=": Operations.GE,
+    "==":  Operations.EQ,
+    "!=":  Operations.NE,
+    "<":   Operations.LT,
+    "<=":  Operations.LE,
+    ">":   Operations.GT,
+    ">=":  Operations.GE,
 
-    "&&": Operations.AND,
-    "||": Operations.OR,
+    "&&":  Operations.AND,
+    "||":  Operations.OR,
 
-    "&": Operations.BITAND,
-    "|": Operations.BITOR,
-    "^": Operations.XOR,
-    "<<": Operations.SHL,
-    ">>": Operations.SHR,
+    "&":   Operations.BITAND,
+    "|":   Operations.BITOR,
+    "^":   Operations.XOR,
+    "<<":  Operations.SHL,
+    ">>":  Operations.SHR,
 
-    "&=": Operations.ANDASSIGN,
-    "|=": Operations.ORASSIGN,
-    "^=": Operations.XORASSIGN,
+    "&=":  Operations.ANDASSIGN,
+    "|=":  Operations.ORASSIGN,
+    "^=":  Operations.XORASSIGN,
     "<<=": Operations.SHLASSIGN,
     ">>=": Operations.SHRASSIGN,
 }
 
 C_UNARY_OPERATOR_MAP = {
-    "+": Operations.POS,       # +a
-    "-": Operations.NEG,       # -a
-    "!": Operations.NOT,       # !a
-    "~": Operations.BITNOT,    # ~a
-    "*": Operations.DREF,      # *ptr
-    "&": Operations.REF,       # &var
-    "++": Operations.INC,
-    "--": Operations.DEC
+    "+":   Operations.POS,
+    "-":   Operations.NEG,
+    "!":   Operations.NOT,
+    "~":   Operations.BITNOT,
+    "*":   Operations.DREF,
+    "&":   Operations.REF,
+    "++":  Operations.INC,
+    "--":  Operations.DEC
 }
 
 def _decl_type_to_str(type_node: c_ast.Node) -> str:
@@ -176,6 +176,9 @@ class PycparserToUast:
             if cond_u:
                 u.add_child(cond_u)
             return u
+
+        if isinstance(node, c_ast.Break):
+            return BreakNode(_make_token("Break", "break", node.coord))
 
         if isinstance(node, c_ast.If):
             return self._convert_if(node)

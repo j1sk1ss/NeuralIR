@@ -3,6 +3,7 @@ from enum import Enum
 class IRAction(Enum):
     MKLB    = "mklable"
     JMP     = "jump"
+    BREAK   = "break"
     IF      = "if"
     BINOP   = "binop"
     DREF    = "dref"
