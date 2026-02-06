@@ -6,7 +6,7 @@ from parser.uast import (
     UastNode, FunctionNode, FunctionCallNode,
     RExitNode, LoopNode, SwitchNode, DeclarationNode,
     BinaryNode, UnaryNode, ConditionNode, ElseNode,
-    Operations
+    Operations, BreakNode
 )
 
 CPL_BINARY_OPERATOR_MAP = {
@@ -465,7 +465,7 @@ class CplParser:
     def parse_break(self) -> UastNode:
         kw = self.expect("break")
         self.expect(";")
-        return UastNode(kw)
+        return BreakNode(kw)
 
     def parse_literal(self) -> UastNode:
         t = self.peek()

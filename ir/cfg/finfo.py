@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from ir.cfg.cfg import CFGFunction, CFGBlock
+from ir.cfg.cfggen import give_flatten_instructions
 from ir.instr.ir_block import IRBlock, IRAction
 
 @dataclass
@@ -40,12 +41,6 @@ def gather_function_info(f: CFGFunction) -> CFGFunctionInfo:
         syscalls=syscalls
     )
 
-def _flatten_function(f: CFGFunction) -> list[IRBlock]:
-    instrs: list[IRBlock] = []
-    for bb in f.blocks:
-        instrs.extend(bb.instrs)
-    return instrs
-
 def _distance_to_nearest_break( # TODO: Find a break based on CFG over than linear instructions
     f: CFGFunction,
     inst: IRBlock
@@ -79,7 +74,7 @@ def _count_same_before_after_func(
     f: CFGFunction,
     inst: IRBlock
 ) -> tuple[int, int]:
-    instrs = _flatten_function(f)
+    instrs = give_flatten_instructions(f)
 
     try:
         idx = instrs.index(inst)

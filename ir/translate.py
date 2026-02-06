@@ -52,8 +52,6 @@ class Translator:
             if node.childs:
                 for child in node.childs:
                     self.translate_uast_node(child)
-            else:
-                self.ctx.append(IRBlock(a=IRAction.NOTHING))
     
     def translate_function_node(self, node: FunctionNode) -> None:
         self.ctx.append(IRBlock(a=IRAction.FDECL, x=IRFunction(name=node.get_name())))
@@ -77,7 +75,7 @@ class Translator:
         body_lb: IRSubject  = IRLabel()
         exit_lb: IRSubject  = IRLabel()
         self.ctx.append(IRBlock(a=IRAction.MKLB, x=entry_lb))
-        # self.ctx.append(IRBlock(a=IRAction.LOOP))
+        self.ctx.append(IRBlock(a=IRAction.LOOP))
         
         self.translate_uast_node(node.get_cond())
         self.ctx.append(IRBlock(a=IRAction.IF, x=body_lb, y=exit_lb))

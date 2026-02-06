@@ -81,11 +81,8 @@ class IRBlock:
             return f"{self.a.value}({self.subjects[0]})"
         return f"{self.a.value}"
 
-_global_bb_id: int = 0
-
 class IRBaseBlockLabel(IRBlock):
-    def __init__(self) -> None:
+    def __init__(self, id: int) -> None:
         super().__init__(IRAction.BB)
-        global _global_bb_id
-        self.id: int = _global_bb_id
-        _global_bb_id += 1
+        self.id: int = id
+        self.a = IRAction.BB
