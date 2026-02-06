@@ -17,6 +17,7 @@ class IRAction(Enum):
     LOOP    = "loop"
     TERM    = "term"
     FCALL   = "fcall"
+    SCALL   = "scall" # TODO: CPL syscall support and C/++ code special functions mark as syscalls
     FDECL   = "fdecl"
     FEND    = "fend"
 

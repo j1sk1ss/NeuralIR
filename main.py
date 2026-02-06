@@ -3,7 +3,7 @@ from parser.parser import (
 )
 
 from ir.translate import Translator
-from ir.instr.ir_block import IRBlock
+from ir.instr.ir_block import IRBlock, IRAction
 from ir.printer import pretty_print_ir
 
 from ir.cfg.printer import cfg_to_dot, dom_tree_to_dot
@@ -28,6 +28,11 @@ from ir.loop.linfo import (
   gather_loop_info
 )
 
+from ir.cfg.finfo import (
+  gather_function_info,
+  gather_instruction_info
+)
+
 if __name__ == "__main__":
   code = r"""
   {
@@ -37,6 +42,7 @@ if __name__ == "__main__":
         while 1; {
           foo();
           break;
+          foo();
         }
       }
     }
@@ -79,3 +85,14 @@ if __name__ == "__main__":
   
   for loop in loops:
     _print_loop(loop=loop, loops=loops)
+    
+  print("5. Funcs info:")
+  for func in funcs:
+    print(f"{func.func} / {gather_function_info(f=func)}")
+    
+  print("6. FOO() instruction:")
+  for func in funcs:
+    for block in func.blocks:
+      for inst in block.instrs:
+        if inst.a == IRAction.FCALL:
+          print(f"fcall / {gather_instruction_info(f=func, bb=block, inst=inst)}")
