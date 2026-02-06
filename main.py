@@ -24,6 +24,10 @@ from ir.loop.ltree import (
   generate_loop_tree
 )
 
+from ir.loop.linfo import (
+  gather_loop_info
+)
+
 if __name__ == "__main__":
   code = r"""
   {
@@ -58,7 +62,7 @@ if __name__ == "__main__":
   link_blocks(funcs=funcs)
   complete_successors(funcs=funcs)
   for func in funcs:
-    print(f"3.1 func{func.id}:")
+    print(f"3.1 {func.func}:")
     print(cfg_to_dot(blocks=func.blocks, show_instrs=False))
     
     print(f"3.2 Dominators:")
@@ -68,10 +72,10 @@ if __name__ == "__main__":
     
   print("4. LOOP:")
   loops: list[LoopNode] = generate_loop_tree(funcs=funcs)
-  def _print_loop(loop: LoopNode) -> None:
-    print(f"loop: {str(loop)}")
+  def _print_loop(loop: LoopNode, loops: list[LoopNode]) -> None:
+    print(f"loop: {str(loop)}, Info: {gather_loop_info(loops=loops, trg=loop)}")
     for child in loop.childs:
-      _print_loop(loop=child)
+      _print_loop(loop=child, loops=loops)
   
   for loop in loops:
-    _print_loop(loop=loop)
+    _print_loop(loop=loop, loops=loops)

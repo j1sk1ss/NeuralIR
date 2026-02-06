@@ -1,20 +1,25 @@
 from ir.cfg.cfg import CFGBlock, CFGFunction
-from ir.instr.ir_block import IRBlock, IRAction, IRLabel
+from ir.instr.ir_block import IRBlock, IRAction, IRLabel, IRFunction
 
-def _split_by_function(instructions: list[IRBlock]) -> list[list[IRBlock]]:
-    output: list[list[IRBlock]] = []
+def _split_by_function(instructions: list[IRBlock]) -> dict[str, list[IRBlock]]:
+    output: dict[str, list[IRBlock]] = {}
+
     cur: list[IRBlock] = []
+    cur_func: IRFunction | None = None
 
     for inst in instructions:
         if inst.a == IRAction.FDECL:
-            if cur:
-                output.append(cur)
+            if cur_func is not None:
+                output[cur_func.name] = cur
+
+            cur_func = inst.subjects[0]
             cur = []
             continue
+
         cur.append(inst)
 
-    if cur:
-        output.append(cur)
+    if cur_func is not None:
+        output[cur_func.name] = cur
 
     return output
 
@@ -27,13 +32,12 @@ def get_blocks_from_ir(instructions: list[IRBlock]) -> list[CFGFunction]:
     output: list[CFGFunction] = []
     start_counter, end_counter = 0, 0
 
-    prepared = _split_by_function(instructions=instructions)
-
-    for func in prepared:
+    prepared: dict[str, list[IRBlock]] = _split_by_function(instructions=instructions)
+    for fname, blocks in prepared.items():
         block_instructions: list[IRBlock] = []
-        output.append(CFGFunction(id=_global_func_id, func=f"func{_global_func_id}", blocks=[]))
+        output.append(CFGFunction(id=_global_func_id, func=fname, blocks=[]))
         _global_func_id += 1
-        for inst in func:
+        for inst in blocks:
             end_counter += 1
             block_instructions.append(inst)
 

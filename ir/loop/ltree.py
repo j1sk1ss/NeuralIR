@@ -44,7 +44,6 @@ def find_natural_loop(
 
     return loop_blocks
 
-
 def generate_loop_tree(funcs: list[CFGFunction]) -> list[LoopNode]:
     all_loops: list[LoopNode] = []
 
@@ -81,3 +80,22 @@ def generate_loop_tree(funcs: list[CFGFunction]) -> list[LoopNode]:
             roots.append(loop)
 
     return roots
+
+def find_loop(block: CFGBlock, loops: list[LoopNode]) -> LoopNode | None:
+    def _dfs(node: LoopNode) -> LoopNode | None:
+        if block not in node.blocks:
+            return None
+
+        for child in node.childs:
+            res = _dfs(child)
+            if res is not None:
+                return res
+
+        return node
+
+    for root in loops:
+        res = _dfs(root)
+        if res is not None:
+            return res
+
+    return None
