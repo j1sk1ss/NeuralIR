@@ -40,14 +40,8 @@ if __name__ == "__main__":
   {
     function foo();
     function main() {
-      while 1; {
-        while 1; {
-          while 1; {
-            foo();
-          }
-          foo();
-        }
-      }
+      foo();
+      return;
     }
   }
   """

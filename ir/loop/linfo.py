@@ -31,4 +31,4 @@ def gather_loop_info(loops: list[LoopNode], trg: LoopNode) -> LoopInfo:
         if info is not None:
             return info
 
-    raise ValueError("Target loop not found in loop tree")
+    return None

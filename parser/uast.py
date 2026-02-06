@@ -72,6 +72,8 @@ class RExitNode(UastNode):
         super().__init__(token)
        
     def get_retval(self) -> UastNode:
+        if len(self.childs) == 0:
+            return None
         return self.childs[0]
        
     def __str__(self) -> str:
