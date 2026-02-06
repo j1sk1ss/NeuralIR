@@ -109,6 +109,14 @@ class SwitchNode(UastNode):
     def __str__(self) -> str:
         return "SwitchNode"
 
+class BreakNode(UastNode): # TODO: Integrate the 'breakNode' to the both parsers and to the translator
+                           #       HINT: use a stack structure to track the 'exit' label.
+    def __init__(self, token: Token) -> None:
+        super().__init__(token)
+        
+    def __str__(self) -> str:
+        return "BreakNode"
+
 class ConditionNode(UastNode):
     def __init__(self, token: Token) -> None:
         super().__init__(token)

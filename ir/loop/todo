@@ -1,0 +1,2 @@
+- Loop tree generation. See: https://github.com/j1sk1ss/CordellCompiler/blob/dev/src/hir/loop/ltree.c
+- Basic loop information collection. Use a dataclass as a data collector for a basic information such as 'Loop nested', 'Loop size' and etc.
