@@ -61,7 +61,9 @@ class FunctionCallNode(UastNode):
     def get_name(self) -> str:
         return self.token.value
         
-    def get_args(self) -> UastNode:
+    def get_args(self) -> UastNode | None:
+        if not self.childs:
+            return None
         return self.childs[0]
         
     def __str__(self) -> str:

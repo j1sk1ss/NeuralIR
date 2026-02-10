@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from enum import Enum
 from dataclasses import dataclass
 
@@ -6,8 +8,17 @@ from parser.c.pyc_to_uast import c_code_to_uast
 from parser.cpl.cpl_to_uast import cpl_code_to_uast
 
 class Language(Enum):
-    C   = 1
-    CPL = 2
+    C       = 1
+    CPL     = 2
+    UNKNOWN = 3
+    
+    def from_string(name: str) -> Language:
+        if name == 'C':
+            return Language.C
+        elif name == 'CPL':
+            return Language.CPL
+        else:
+            return Language.UNKNOWN
 
 @dataclass
 class ParserConfig:

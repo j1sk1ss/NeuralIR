@@ -3,22 +3,20 @@ from analysis.analyzer import ProgramAnalysis
 
 if __name__ == "__main__":
   code = r"""
-  {
-    function foo();
-    function main() {
-      while 1; {
-        while 1; {
-          foo();
-        }
-      }
+void foo() {}
+void main() {
+  while (1) {
+    while (1) {
+      foo();
     }
   }
+}
   """
 
   analyzer: ProgramAnalysis = ProgramAnalysis(
     parser=Parser(
       conf=ParserConfig(
-        code=code, lang=Language.CPL
+        code=code, lang=Language.C
       )
     )
   )
