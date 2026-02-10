@@ -6,47 +6,49 @@ from ir.translate import Translator
 from ir.cfg.cfg import CFGFunction
 from ir.instr.ir_block import IRAction
 from ir.cfg.cfggen import (
-  get_blocks_from_ir,
-  link_blocks
+    get_blocks_from_ir,
+    link_blocks
 )
 
 from ir.cfg.dom import (
-  complete_successors,
-  compute_function_dom,
-  compute_strict_dom
+    complete_successors,
+    compute_function_dom,
+    compute_strict_dom
 )
 
 from ir.loop.ltree import (
-  generate_loop_tree,
-  find_loop
+    generate_loop_tree,
+    find_loop
 )
 from ir.loop.linfo import (
-  gather_loop_info
+    LoopInfo,
+    gather_loop_info
 )
 from ir.cfg.finfo import (
-  gather_function_info,
-  gather_instruction_info
+    CFGFunctionInfo,
+    CFGInstructionInfo,
+    gather_function_info,
+    gather_instruction_info
 )
 
 @dataclass
 class InstructionAnalysis:
-    function: str
-    block_id: int
-    action: IRAction
-    called_function: str | None
-    instruction_info: dict
-    loop_info: dict | None
+    function: str                           # Function owner name
+    block_id: int                           # CFG block owner Id
+    action: IRAction                        # IRAction of this instruction
+    called_function: str | None             # If this is the FCALL action, the name of which function is called
+    instruction_info: CFGInstructionInfo    # Instruction basic information
+    loop_info: LoopInfo | None              # Loop basic information
 
 @dataclass
 class FunctionAnalysis:
-    name: str
-    cfg: CFGFunction
-    info: dict
-    instructions: list[InstructionAnalysis]
+    name: str                               # Function name
+    cfg: CFGFunction                        # Function's CFG
+    info: CFGFunctionInfo                   # Function basic information
+    instructions: list[InstructionAnalysis] # Info about each function's instruction
 
     def calls(self) -> list[InstructionAnalysis]:
-        return [i for i in self.instructions if i.action == IRAction.FCALL]
-
+        return [ i for i in self.instructions if i.action == IRAction.FCALL ]
 
 class ProgramAnalysis:
     def __init__(self, parser: Parser):
@@ -108,10 +110,24 @@ class ProgramAnalysis:
         )
 
     def get_function(self, name: str) -> FunctionAnalysis:
+        """Get information about a function by the provided name.
+
+        Args:
+            name (str): Name of a function to search.
+
+        Returns:
+            FunctionAnalysis: Information about the found function.
+        """
         return self.functions[name]
 
     def all_calls(self) -> list[InstructionAnalysis]:
+        """Get all function calls from the provided code snippet.
+
+        Returns:
+            list[InstructionAnalysis]: List of analysis of function calls.
+        """
         calls = []
         for f in self.functions.values():
             calls.extend(f.calls())
+            
         return calls
