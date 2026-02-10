@@ -1,0 +1,117 @@
+from dataclasses import dataclass
+
+from parser.parser import Parser
+
+from ir.translate import Translator
+from ir.cfg.cfg import CFGFunction
+from ir.instr.ir_block import IRAction
+from ir.cfg.cfggen import (
+  get_blocks_from_ir,
+  link_blocks
+)
+
+from ir.cfg.dom import (
+  complete_successors,
+  compute_function_dom,
+  compute_strict_dom
+)
+
+from ir.loop.ltree import (
+  generate_loop_tree,
+  find_loop
+)
+from ir.loop.linfo import (
+  gather_loop_info
+)
+from ir.cfg.finfo import (
+  gather_function_info,
+  gather_instruction_info
+)
+
+@dataclass
+class InstructionAnalysis:
+    function: str
+    block_id: int
+    action: IRAction
+    called_function: str | None
+    instruction_info: dict
+    loop_info: dict | None
+
+@dataclass
+class FunctionAnalysis:
+    name: str
+    cfg: CFGFunction
+    info: dict
+    instructions: list[InstructionAnalysis]
+
+    def calls(self) -> list[InstructionAnalysis]:
+        return [i for i in self.instructions if i.action == IRAction.FCALL]
+
+
+class ProgramAnalysis:
+    def __init__(self, parser: Parser):
+        self.parser: Parser = parser
+        self.functions: dict[str, FunctionAnalysis] = {}
+        self.loops: list = []
+        self._analyze()
+
+    def _analyze(self) -> None:
+        uast = self.parser.parse()
+
+        translator = Translator(root=uast)
+        ir_blocks = translator.translate()
+
+        funcs = get_blocks_from_ir(ir_blocks)
+        link_blocks(funcs)
+        complete_successors(funcs)
+
+        for f in funcs:
+            compute_function_dom(f)
+            compute_strict_dom(f)
+
+        self.loops = generate_loop_tree(funcs)
+
+        for f in funcs:
+            self.functions[f.func] = self._build_function_analysis(f)
+
+    def _build_function_analysis(self, f: CFGFunction) -> FunctionAnalysis:
+        instructions = []
+
+        for bb in f.blocks:
+            loop = find_loop(bb, self.loops)
+            for inst in bb.instrs:
+                instructions.append(
+                    InstructionAnalysis(
+                        function=f.func,
+                        block_id=bb.id,
+                        action=inst.a,
+                        called_function=(
+                            inst.subjects[0].name
+                            if inst.a == IRAction.FCALL
+                            else None
+                        ),
+                        instruction_info=gather_instruction_info(
+                            f=f, bb=bb, inst=inst
+                        ),
+                        loop_info=(
+                            gather_loop_info(self.loops, loop)
+                            if loop else None
+                        )
+                    )
+                )
+
+        return FunctionAnalysis(
+            name=f.func,
+            cfg=f,
+            info=gather_function_info(f),
+            instructions=instructions
+        )
+
+    def get_function(self, name: str) -> FunctionAnalysis:
+        return self.functions[name]
+
+    def all_calls(self) -> list[InstructionAnalysis]:
+        calls = []
+        for f in self.functions.values():
+            calls.extend(f.calls())
+        return calls
