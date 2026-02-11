@@ -5,6 +5,7 @@ from parser.parser import Parser
 from ir.translate import Translator
 from ir.cfg.cfg import CFGFunction
 from ir.instr.ir_block import IRAction
+from ir.printer import PrintStyle, pretty_print_ir
 from ir.cfg.cfggen import (
     get_blocks_from_ir,
     link_blocks
@@ -55,6 +56,7 @@ class ProgramAnalysis:
         self.parser: Parser = parser
         self.functions: dict[str, FunctionAnalysis] = {}
         self.loops: list = []
+        self.ir_form_debug: str = ""
         self._analyze()
 
     def _analyze(self) -> None:
@@ -62,6 +64,7 @@ class ProgramAnalysis:
 
         translator = Translator(root=uast)
         ir_blocks = translator.translate()
+        self.ir_form_debug = pretty_print_ir(blocks=ir_blocks, style=PrintStyle(show_index=True))
 
         funcs = get_blocks_from_ir(ir_blocks)
         link_blocks(funcs)
@@ -108,6 +111,11 @@ class ProgramAnalysis:
             info=gather_function_info(f),
             instructions=instructions
         )
+
+    def print_ir(self) -> None:
+        """Print the IR form of the code.
+        """
+        print(self.ir_form_debug)
 
     def get_function(self, name: str) -> FunctionAnalysis:
         """Get information about a function by the provided name.

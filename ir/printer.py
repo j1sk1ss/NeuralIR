@@ -64,9 +64,9 @@ def pretty_print_ir(
         if a == IRAction.BREAK:
             return "break"
         if a == IRAction.DREF and subs[0]:
-            return f"dereference of {subs[0]}"
+            return f"dereference of something"
         if a == IRAction.REF and subs[0]:
-            return f"reference to {subs[0]}"
+            return f"reference of something"
         if a == IRAction.MKLB and subs[0]:
             return f"{subs[0]}:"
         if a == IRAction.BB:

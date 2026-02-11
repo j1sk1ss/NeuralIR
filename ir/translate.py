@@ -7,7 +7,7 @@ from parser.uast import (
     UastNode, FunctionNode, FunctionCallNode,
     RExitNode, LoopNode, SwitchNode, DeclarationNode,
     BinaryNode, UnaryNode, ConditionNode, ElseNode, 
-    ConditionElseNode, BreakNode
+    ConditionElseNode, BreakNode, Operations
 )
 
 class Translator:
@@ -47,7 +47,7 @@ class Translator:
         elif isinstance(node, ElseNode):
             self.translate_else_node(node)
         elif isinstance(node, BreakNode):
-            self.translate_break_node(node)
+            self.translate_break_node()
         else:
             if node.childs:
                 for child in node.childs:
@@ -66,9 +66,9 @@ class Translator:
         self.translate_uast_node(node.get_retval())
         self.ctx.append(IRBlock(a=IRAction.TERM))
     
-    def translate_break_node(self, node: BreakNode) -> None:
+    def translate_break_node(self) -> None:
         self.ctx.append(IRBlock(a=IRAction.BREAK))
-        self.ctx.append(IRBlock(a=IRAction.JMP, x=self.brk_ctx.pop()))
+        self.ctx.append(IRBlock(a=IRAction.JMP, x=self.brk_ctx[-1]))
     
     def translate_loop_node(self, node: LoopNode) -> None:
         entry_lb: IRSubject = IRLabel()
@@ -81,8 +81,9 @@ class Translator:
         self.ctx.append(IRBlock(a=IRAction.IF, x=body_lb, y=exit_lb))
         
         self.ctx.append(IRBlock(a=IRAction.MKLB, x=body_lb))
-        self.brk_ctx.insert(0, exit_lb)
+        self.brk_ctx.append(exit_lb)
         self.translate_uast_node(node.get_body())
+        self.brk_ctx.pop()
         self.ctx.append(IRBlock(a=IRAction.JMP, x=entry_lb))
         
         self.ctx.append(IRBlock(a=IRAction.MKLB, x=exit_lb))
@@ -107,10 +108,21 @@ class Translator:
         self.translate_uast_node(node.get_val())
     
     def translate_binary_node(self, node: BinaryNode) -> None:
-        self.ctx.append(IRBlock(a=IRAction.BINARY, x=IROperation(op=node.get_op().name)))
+        self.translate_uast_node(node.get_left())
+        self.translate_uast_node(node.get_right())
+        
+        match node.get_op():
+            case _:
+                self.ctx.append(IRBlock(a=IRAction.NOTHING))
     
     def translate_unary_node(self, node: UnaryNode) -> None:
-        self.ctx.append(IRBlock(a=IRAction.UNARY, x=IROperation(op=node.get_op().name)))
+        irop: IRAction = IRAction.NOTHING
+        if node.get_op() == Operations.REF:
+            irop = IRAction.REF
+        elif node.get_op() == Operations.DREF:
+            irop = IRAction.DREF
+            
+        self.ctx.append(IRBlock(a=irop, x=IROperation(op=node.get_op().name)))
     
     def translate_condition_node(self, node: ConditionNode) -> None:
         true_lb: IRSubject  = IRLabel()

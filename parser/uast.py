@@ -241,6 +241,12 @@ class BinaryNode(UastNode):
     def get_op(self) -> Operations:
         return self.op
         
+    def get_left(self) -> UastNode:
+        return self.childs[0]
+        
+    def get_right(self) -> UastNode:
+        return self.childs[1]
+        
     def __str__(self) -> str:
         return f"BinaryNode(op={self.op.name})"
 
