@@ -10,5 +10,5 @@ To run the GUI version, use:
 or
 
 ```bash
-python3 -m gui.gui
+python3 -m gui.inliner
 ```
