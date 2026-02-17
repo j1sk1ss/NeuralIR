@@ -41,6 +41,16 @@ class InstructionAnalysis:
     instruction_info: CFGInstructionInfo    # Instruction basic information
     loop_info: LoopInfo | None              # Loop basic information
 
+    def dump_to_json(self) -> dict:
+        return {
+            "owner": self.function,
+            "block_id": self.block_id,
+            "action": self.action.value,
+            "called_function": self.called_function,
+            "instruction_info": self.instruction_info.dump_to_json(),
+            "loop_info": self.loop_info.dump_to_json() if self.loop_info else {}
+        }
+
 @dataclass
 class FunctionAnalysis:
     name: str                               # Function name
@@ -50,6 +60,12 @@ class FunctionAnalysis:
 
     def calls(self) -> list[InstructionAnalysis]:
         return [ i for i in self.instructions if i.action == IRAction.FCALL ]
+    
+    def dump_to_json(self) -> dict:
+        return {
+            "name": self.name,
+            "info": self.info.dump_to_json()
+        }
 
 class ProgramAnalysis:
     def __init__(self, parser: Parser):

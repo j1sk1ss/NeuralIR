@@ -1,160 +1,28 @@
 import json
-import re
 import sys
-from pathlib import Path
 
-def load_json(path):
+from pathlib import Path
+from tools.funcextractor import extract_inlined_pair, set_fake_libc_path
+from parser.parser import Parser, ParserConfig, Language
+from analysis.analyzer import ProgramAnalysis
+
+def _load_json(path):
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
-def skip_comments_and_strings(text, pos):
-    n = len(text)
-    if pos >= n:
-        return pos
-    ch = text[pos]
-    if ch == '/' and pos + 1 < n:
-        if text[pos + 1] == '*':
-            pos += 2
-            while pos + 1 < n and not (text[pos] == '*' and text[pos + 1] == '/'):
-                pos += 1
-            return pos + 2
-        elif text[pos + 1] == '/':
-            pos += 2
-            while pos < n and text[pos] != '\n':
-                pos += 1
-            return pos
-    elif ch in '"\'':
-        quote = ch
-        pos += 1
-        while pos < n:
-            if text[pos] == '\\' and pos + 1 < n:
-                pos += 2
-                continue
-            if text[pos] == quote:
-                pos += 1
-                break
-            pos += 1
-        return pos
-    return pos
-
-def skip_whitespace_and_comments(text, pos):
-    n = len(text)
-    while pos < n:
-        new_pos = skip_comments_and_strings(text, pos)
-        if new_pos != pos:
-            pos = new_pos
-            continue
-        if text[pos] in ' \t\n\r':
-            pos += 1
-        else:
-            break
-    return pos
-
-def extract_function_definition(content, func_name):
-    name_pattern = re.compile(r'\b' + re.escape(func_name) + r'\b')
-    n = len(content)
-
-    for match in name_pattern.finditer(content):
-        pos = match.start()
-        name_end = match.end()
-
-        i = skip_whitespace_and_comments(content, name_end)
-        if i >= n or content[i] != '(':
-            continue
-
-        i += 1
-        paren_count = 1
-        while i < n and paren_count > 0:
-            i = skip_comments_and_strings(content, i)
-            if i >= n:
-                break
-            ch = content[i]
-            if ch == '(':
-                paren_count += 1
-            elif ch == ')':
-                paren_count -= 1
-            i += 1
-            
-        if paren_count != 0:
-            continue
-
-        i = skip_whitespace_and_comments(content, i)
-        while i + 13 < n and content[i:i+13] == '__attribute__':
-            i += 13
-            i = skip_whitespace_and_comments(content, i)
-            if i >= n or content[i] != '(':
-                break
-            
-            attr_paren = 1
-            i += 1
-            while i < n and attr_paren > 0:
-                i = skip_comments_and_strings(content, i)
-                if i >= n:
-                    break
-                if content[i] == '(':
-                    attr_paren += 1
-                elif content[i] == ')':
-                    attr_paren -= 1
-                i += 1
-            i = skip_whitespace_and_comments(content, i)
-
-        if i >= n or content[i] != '{':
-            continue
-
-        start = pos
-        brace_count = 1
-        i += 1
-        while i < n and brace_count > 0:
-            i = skip_comments_and_strings(content, i)
-            if i >= n:
-                break
-            if content[i] == '{':
-                brace_count += 1
-            elif content[i] == '}':
-                brace_count -= 1
-            i += 1
-
-        if brace_count == 0:
-            return content[start:i]
-
-    return None
-
-def find_function_in_project(project_root, func_name, cache):
-    if func_name in cache:
-        return cache[func_name]
-
-    for ext in ('*.c', '*.h'):
-        for path in sorted(project_root.rglob(ext)):
-            try:
-                with open(path, "r", encoding="utf-8", errors="ignore") as f:
-                    content = f.read()
-            except Exception:
-                continue
-            text = extract_function_definition(content, func_name)
-            if text:
-                cache[func_name] = (text, path)
-                return text, path
-
-    cache[func_name] = (None, None)
-    return None, None
-
-def sanitize(name):
-    return re.sub(r"[^\w\-_.]", "_", name)
-
-def make_relative_path(path, base):
-    try:
-        return path.relative_to(base)
-    except ValueError:
-        return path
-
-def main():
+def _main() -> None:
     if len(sys.argv) != 4:
-        print("Usage: python script.py <json> <project_root> <output_dir>")
+        print("Usage: python script.py <json> <project_root> <output_dir> <fakelibs>")
         sys.exit(1)
 
-    json_path = Path(sys.argv[1])
-    project_root = Path(sys.argv[2]).resolve()
-    output_dir = Path(sys.argv[3])
+    json_path: Path = Path(sys.argv[1])
+    project_root: Path = Path(sys.argv[2]).resolve()
+    output_dir: Path = Path(sys.argv[3])
+
+    fakelibs: str | None = None
+    if len(sys.argv) > 4:
+        fakelibs = sys.argv[4]
+    
     output_dir.mkdir(parents=True, exist_ok=True)
 
     if not json_path.is_file():
@@ -164,48 +32,62 @@ def main():
         print(f"Error: Project root not found: {project_root}")
         sys.exit(1)
 
-    data = load_json(json_path)
-    events = data.get("inlining_events", [])
+    data: dict = _load_json(json_path)
+    events: list[dict] = data.get("inlining_events", [])
     if not events:
         print("No inlining events found.")
         return
 
-    definition_cache = {}
-    found_count = 0
-    total = len(events)
+    found_count: int = 0
+    total: int = len(events)
 
-    for idx, event in enumerate(events):
-        callee = event.get("callee")
-        caller = event.get("caller")
-        if not callee or not caller:
+    offsets: dict[str:int] = {}
+    dumped_events: list[dict] = []
+    for event in events:
+        set_fake_libc_path(path=fakelibs)
+        code: str = extract_inlined_pair(event=event, project_root=project_root)
+        if not code:
             continue
 
-        callee_text, callee_path = find_function_in_project(project_root, callee, definition_cache)
-        caller_text, caller_path = find_function_in_project(project_root, caller, definition_cache)
+        try:
+            analyzer: ProgramAnalysis = ProgramAnalysis(
+                parser=Parser(
+                    conf=ParserConfig(
+                        code=code, lang=Language.C
+                    )
+                )
+            )
+        except Exception as ex:
+            print(f"Parser error on code:\n{code}")
+            raise Exception("Parser error!") from ex
 
-        if not callee_text:
-            print(f"Warning: callee '{callee}' not found")
-        if not caller_text:
-            print(f"Warning: caller '{caller}' not found")
-        if not callee_text or not caller_text:
-            continue
+        funccall_index: int = 0
+        offset: int = offsets.get(event.get("caller") + event.get("callee"), 0)
+        caller_function = analyzer.get_function(event.get("caller"))
+        for fcall in caller_function.calls():
+            if fcall.called_function == event.get("callee"):
+                if funccall_index != offset:
+                    funccall_index += 1
+                    continue
 
-        out_file = output_dir / f"{idx:04d}_{sanitize(callee)}_into_{sanitize(caller)}.txt"
-        with open(out_file, "w", encoding="utf-8") as f:
-            f.write("// ===== CALLEE =====\n")
-            f.write(f"// From: {make_relative_path(callee_path, project_root)}\n\n")
-            f.write(callee_text)
-            f.write("\n\n")
-            f.write("// ===== CALLER =====\n")
-            f.write(f"// From: {make_relative_path(caller_path, project_root)}\n\n")
-            f.write(caller_text)
+                dumped_events.append({
+                    "callee": analyzer.get_function(event.get("callee")).dump_to_json(),
+                    "caller": fcall.dump_to_json()
+                })
+
+                break
+
+        offsets[event.get("caller") + event.get("callee")] = offset + 1
 
         found_count += 1
         if found_count % 10 == 0:
             print(f"Processed {found_count}/{total} pairs...")
 
+    with open(f"{output_dir}/dumped.json", "w") as f:
+        json.dump(dumped_events, f)
+
     print(f"Done. Extracted {found_count} inlining pairs.")
 
 if __name__ == "__main__":
-    main()
+    _main()
     

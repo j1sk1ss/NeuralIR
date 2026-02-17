@@ -7,6 +7,13 @@ class LoopInfo:
     loop_size_ir: int
     loop_nested: int
 
+    def dump_to_json(self) -> dict:
+        return {
+            "loop_size_bb": self.loop_size_bb,
+            "loop_size_ir": self.loop_size_ir,
+            "loop_nested": self.loop_nested
+        }
+
 def gather_loop_info(loops: list[LoopNode], trg: LoopNode) -> LoopInfo:
     def _dfs(node: LoopNode, depth: int) -> LoopInfo | None:
         if node is trg:

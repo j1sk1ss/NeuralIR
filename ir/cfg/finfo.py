@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from ir.cfg.cfg import CFGFunction, CFGBlock
-from ir.cfg.cfggen import give_flatten_instructions
 from ir.instr.ir_block import IRBlock, IRAction
 
 @dataclass
@@ -11,12 +10,29 @@ class CFGFunctionInfo:
     funccalls: int     # how many funccalls in this function?
     syscalls: int = -1 # how many syscalls in this function? -1 if syscalls aren't supported by lang
 
+    def dump_to_json(self) -> dict:
+        return {
+            "bb_count": self.bb_count,
+            "ir_count": self.ir_count,
+            "is_start": self.is_start,
+            "funccalls": self.funccalls,
+            "syscalls": self.syscalls
+        }
+
 @dataclass
 class CFGInstructionInfo:
     is_dominated: bool    # this instruction dominated by someone? 
     same_inst_after: int  # how many similar instructions after this instruction?
     same_inst_before: int # hiw many similar instructions before this instruction?
     near_break: int = -1  # distance to the near break. -1 - There is no 'BREAK' in a block
+
+    def dump_to_json(self) -> dict:
+        return {
+            "is_dom": self.is_dominated,
+            "same_inst_after": self.same_inst_after,
+            "same_inst_before": self.same_inst_before,
+            "near_break": self.near_break
+        }
 
 def gather_function_info(f: CFGFunction) -> CFGFunctionInfo:
     bb_count = len(f.blocks)

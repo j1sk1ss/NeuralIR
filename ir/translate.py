@@ -68,7 +68,8 @@ class Translator:
     
     def translate_break_node(self) -> None:
         self.ctx.append(IRBlock(a=IRAction.BREAK))
-        self.ctx.append(IRBlock(a=IRAction.JMP, x=self.brk_ctx[-1]))
+        if self.brk_ctx:
+            self.ctx.append(IRBlock(a=IRAction.JMP, x=self.brk_ctx[-1]))
     
     def translate_loop_node(self, node: LoopNode) -> None:
         entry_lb: IRSubject = IRLabel()

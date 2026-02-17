@@ -11,3 +11,4 @@ python project_data_gen.py \
     <project_path> \
     <save_loc>
 ```
+- `funcextractor.py` - Helper module. Don't use it as a separate script!
