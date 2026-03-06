@@ -1,6 +1,5 @@
 from pathlib import Path
 from pycparser import parse_file, c_ast, c_generator
-import pycparser
 
 _cpp_path = "gcc"
 _cpp_extra_args = []
@@ -51,13 +50,17 @@ def _collect_include_dirs(project_root: Path):
 def _get_fake_libc():
     if _fake_libc_path:
         return _fake_libc_path
-    raise FileNotFoundError("Set fakelibs! Download them from: https://github.com/eliben/pycparser/tree/main/utils/fake_libc_include")
+    raise FileNotFoundError(
+        "Set fakelibs! Download them from: https://github.com/eliben/pycparser/tree/main/utils/fake_libc_include"
+    )
 
 def _parse_file(path: Path, project_root: Path):
     if path in _ast_cache:
         return _ast_cache[path]
+
     fake_libc = _get_fake_libc()
     incs = _collect_include_dirs(project_root)
+
     cpp_args = [
         "-E",
         "-nostdinc",
@@ -68,20 +71,34 @@ def _parse_file(path: Path, project_root: Path):
         "-D__restrict__=",
         "-D__restrict=",
         "-Drestrict=",
+        "-D__asm__(x)=",
+        "-D__asm(x)=",
+        "-D__volatile__=",
     ]
+
     for d in incs:
         cpp_args.append(f"-I{d}")
+
     for define in _extra_defines:
         cpp_args.append(f"-D{define}")
+
     if _fake_types_header:
         cpp_args.append(f"-include{_fake_types_header}")
+
     cpp_args += _cpp_extra_args
+
     try:
-        ast = parse_file(str(path), use_cpp=True, cpp_path=_cpp_path, cpp_args=cpp_args)
+        ast = parse_file(
+            str(path),
+            use_cpp=True,
+            cpp_path=_cpp_path,
+            cpp_args=cpp_args,
+        )
     except Exception as ex:
-        with open(str(path), "r") as f:
-            print(f"Parse error in {path}! Code:\n{f.read()}")
-        raise Exception("Parse error!") from ex
+        print(f"[WARN] Failed to parse: {path}")
+        print(f"[WARN] Parser error: {ex}")
+        return None
+
     _ast_cache[path] = ast
     return ast
 
@@ -103,6 +120,9 @@ def _find_function_in_project(project_root: Path, name: str):
         return _func_cache[name]
     for path in project_root.rglob("*.c"):
         ast = _parse_file(path, project_root)
+        if ast is None:
+            continue
+        
         visitor = _FuncDefVisitor(name)
         visitor.visit(ast)
         if visitor.node:

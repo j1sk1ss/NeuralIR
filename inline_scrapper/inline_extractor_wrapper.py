@@ -1,31 +1,33 @@
-#!/usr/bin/env python3
 import os
 import sys
-import subprocess
 import hashlib
+import subprocess
+
 from pathlib import Path
 
-def debug(msg):
+def _fire_debug_message(msg) -> None:
     print(f"[wrapper] {msg}", file=sys.stderr)
 
-def has_source_file(args):
+def _has_source_file(args: list[str]) -> bool:
     for arg in args:
         if arg.startswith('-'):
             continue
         if any(arg.endswith(ext) for ext in ['.c', '.cpp', '.cc', '.cxx', '.C']):
             return True
+        
     return False
 
-def find_source_files(args):
+def _find_source_files(args: list[str]) -> list:
     sources = []
     for arg in args:
         if arg.startswith('-'):
             continue
         if any(arg.endswith(ext) for ext in ['.c', '.cpp', '.cc', '.cxx', '.C']):
             sources.append(arg)
+            
     return sources
 
-def find_output_file(args):
+def _find_output_file(args: list[str]) -> str | None:
     try:
         o_index = args.index('-o')
         if o_index + 1 < len(args):
@@ -34,7 +36,7 @@ def find_output_file(args):
         pass
     return None
 
-def generate_report_filename(src_paths, output_file):
+def _generate_report_filename(src_paths: list[str], output_file: str) -> str:
     if src_paths:
         base = Path(src_paths[0]).stem
     else:
@@ -43,25 +45,29 @@ def generate_report_filename(src_paths, output_file):
     src_hash = hashlib.md5(hash_input.encode()).hexdigest()[:8]
     return f"{base}_{src_hash}.inline.txt"
 
-def main():
+def _main() -> None:
+    """ Wrapper for a build command. It will take all input compile arguments,
+    then compiler the related project with logging capture, and then save the
+    obtained result (inline logs).
+    """
     real_gcc = os.environ.get('REAL_GCC')
     report_dir = os.environ.get('INLINE_REPORT_DIR')
     opt_flags = os.environ.get('GCC_OPT_FLAGS', '-O2')
 
     if not real_gcc or not report_dir:
-        debug("ERROR: missing REAL_GCC or INLINE_REPORT_DIR")
+        _fire_debug_message("ERROR: missing REAL_GCC or INLINE_REPORT_DIR")
         sys.exit(1)
 
     args = sys.argv[1:]
-    debug(f"args: {args}")
+    _fire_debug_message(f"args: {args}")
 
-    if not has_source_file(args):
-        debug("No source files found, passing through")
+    if not _has_source_file(args):
+        _fire_debug_message("No source files found, passing through")
         return subprocess.call([real_gcc] + args)
 
-    src_files = find_source_files(args)
-    output_file = find_output_file(args)
-    debug(f"src_files: {src_files}, output_file: {output_file}")
+    src_files = _find_source_files(args)
+    output_file = _find_output_file(args)
+    _fire_debug_message(f"src_files: {src_files}, output_file: {output_file}")
 
     cmd = [real_gcc] + args
 
@@ -70,28 +76,26 @@ def main():
         if not opt_flags.startswith('-O'):
             opt_flags = f'-O{opt_flags}'
         cmd.append(opt_flags)
-        debug(f"Added optimization: {opt_flags}")
+        _fire_debug_message(f"Added optimization: {opt_flags}")
 
     cmd.append('-fopt-info-inline')
 
-    debug(f"Running: {' '.join(cmd)}")
+    _fire_debug_message(f"Running: {' '.join(cmd)}")
     proc = subprocess.run(cmd, stderr=subprocess.PIPE, text=True)
 
     report_lines = []
     for line in proc.stderr.splitlines():
         if 'optimized:' in line and 'inlining' in line.lower():
             report_lines.append(line.strip())
-            debug(f"Found inline: {line.strip()}")
+            _fire_debug_message(f"Found inline: {line.strip()}")
 
     if report_lines:
-        report_file = os.path.join(report_dir, generate_report_filename(src_files, output_file))
+        report_file = os.path.join(report_dir, _generate_report_filename(src_files, output_file))
         with open(report_file, 'w') as f:
             f.write('\n'.join(report_lines))
-        debug(f"Report written to {report_file} with {len(report_lines)} entries")
+        _fire_debug_message(f"Report written to {report_file} with {len(report_lines)} entries")
     else:
-        debug("No inlining messages found in stderr")
-
-    return proc.returncode
+        _fire_debug_message("No inlining messages found in stderr")
 
 if __name__ == '__main__':
-    sys.exit(main())
+    sys.exit(_main())

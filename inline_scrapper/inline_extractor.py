@@ -1,17 +1,16 @@
-#!/usr/bin/env python3
-import argparse
-import json
 import os
 import re
-import shutil
-import subprocess
 import sys
-import tempfile
 import csv
-from pathlib import Path
-from typing import Dict, List
+import json
+import shutil
+import tempfile
+import argparse
+import subprocess
 
-def parse_inline_report(file_path: str) -> List[Dict]:
+from pathlib import Path
+
+def _parse_inline_report(file_path: str) -> list[dict]:
     results = []
     try:
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
@@ -33,13 +32,13 @@ def parse_inline_report(file_path: str) -> List[Dict]:
         pass
     return results
 
-def collect_reports(report_dir: str) -> List[Dict]:
+def _collect_reports(report_dir: str) -> list[dict]:
     all_events = []
     for txt_file in Path(report_dir).glob("*.inline.txt"):
-        all_events.extend(parse_inline_report(str(txt_file)))
+        all_events.extend(_parse_inline_report(str(txt_file)))
     return all_events
 
-def export_to_csv(events: List[Dict], filename: str):
+def _export_to_csv(events: list[dict], filename: str):
     if not events:
         return
     with open(filename, 'w', newline='', encoding='utf-8') as f:
@@ -55,7 +54,7 @@ def export_to_csv(events: List[Dict], filename: str):
                 'raw': ev.get('raw', '')
             })
 
-def print_summary(events: List[Dict]) -> None:
+def _print_summary(events: list[dict]) -> None:
     if not events:
         print("No inlining events found.")
         return
@@ -73,7 +72,7 @@ def print_summary(events: List[Dict]) -> None:
         print()
     print(f"\nTotal inlining events: {len(events)}")
 
-def main():
+def _main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--compiler', '-c', required=True)
     parser.add_argument('--opt', '-O', default='-O2')
@@ -83,14 +82,14 @@ def main():
     parser.add_argument('build_command', nargs=argparse.REMAINDER)
     args = parser.parse_args()
 
-    build_cmd = args.build_command
+    build_cmd: str = args.build_command
     if build_cmd and build_cmd[0] == '--':
         build_cmd = build_cmd[1:]
     if not build_cmd:
         print("Error: no build command provided.", file=sys.stderr)
         sys.exit(1)
 
-    wrapper_path = Path(__file__).parent / 'inline_wrapper.py'
+    wrapper_path = Path(__file__).parent / 'inline_extractor_wrapper.py'
     if not wrapper_path.exists():
         print(f"ERROR: wrapper script not found at {wrapper_path}", file=sys.stderr)
         sys.exit(1)
@@ -129,10 +128,10 @@ exec python3 "{wrapper_path}" "$@"
 
     proc = subprocess.run(build_cmd, env=env, shell=False)
 
-    events = collect_reports(report_dir)
+    events = _collect_reports(report_dir)
 
     if events:
-        print_summary(events)
+        _print_summary(events)
         if args.output_json:
             with open(args.output_json, 'w') as f:
                 json.dump({
@@ -142,7 +141,7 @@ exec python3 "{wrapper_path}" "$@"
                 }, f, indent=2)
             print(f"\nJSON report saved to {args.output_json}", file=sys.stderr)
         if args.output_csv:
-            export_to_csv(events, args.output_csv)
+            _export_to_csv(events, args.output_csv)
             print(f"CSV report saved to {args.output_csv}", file=sys.stderr)
     else:
         print("No inlining events were captured.")
@@ -161,4 +160,4 @@ exec python3 "{wrapper_path}" "$@"
     sys.exit(proc.returncode)
 
 if __name__ == '__main__':
-    main()
+    _main()

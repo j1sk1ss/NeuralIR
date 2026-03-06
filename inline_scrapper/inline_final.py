@@ -1,18 +1,32 @@
-import json
 import sys
+import json
 
 from pathlib import Path
-from tools.funcextractor import extract_inlined_pair, set_fake_libc_path
-from parser.parser import Parser, ParserConfig, Language
+SCRIPT_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = SCRIPT_DIR.parent
+sys.path.append(str(PROJECT_ROOT))
+
 from analysis.analyzer import ProgramAnalysis
+from parser.parser import Parser, ParserConfig, Language
+from inline_scrapper.funcextractor import extract_inlined_pair, set_fake_libc_path
 
 def _load_json(path):
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
 def _main() -> None:
-    if len(sys.argv) != 4:
-        print("Usage: python script.py <json> <project_root> <output_dir> <fakelibs>")
+    """ The script uses the inline dump from compilation. This dump has an essential data
+    where and which function was inlined.
+    Additionally, this script uses the analyzer with NeiralIR for general information
+    generation.
+    
+    Note here: This scrapper is based on the pycparser, which means it won't work on other
+               supported languages. To fix this, you will need to implement another project
+               scrapper.
+    """
+    
+    if len(sys.argv) != 5:
+        print(f"Usage: python {sys.argv[0]} <json> <project_root> <output_dir> <fakelibs>")
         sys.exit(1)
 
     json_path: Path = Path(sys.argv[1])
