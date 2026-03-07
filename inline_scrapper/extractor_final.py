@@ -26,7 +26,7 @@ def _main() -> None:
     """
     
     if len(sys.argv) != 5:
-        print(f"Usage: python {sys.argv[0]} <json> <project_root> <output_dir> <fakelibs>")
+        print(f"Usage: python {sys.argv[0]} <json> <project_root> <output_file> <fakelibs>")
         sys.exit(1)
 
     json_path: Path = Path(sys.argv[1])
@@ -37,7 +37,7 @@ def _main() -> None:
     if len(sys.argv) > 4:
         fakelibs = sys.argv[4]
     
-    output_dir.mkdir(parents=True, exist_ok=True)
+    output_dir.parent.mkdir(parents=True, exist_ok=True)
 
     if not json_path.is_file():
         print(f"Error: JSON file not found: {json_path}")
@@ -49,7 +49,10 @@ def _main() -> None:
     data: dict = _load_json(json_path)
     events: list[dict] = data.get("inlining_events", [])
     if not events:
-        print("No inlining events found.")
+        events = data.get("calls", [])
+
+    if not events:
+        print("There is no events!")
         return
 
     found_count: int = 0
@@ -92,12 +95,11 @@ def _main() -> None:
                 break
 
         offsets[event.get("caller") + event.get("callee")] = offset + 1
-
         found_count += 1
         if found_count % 10 == 0:
             print(f"Processed {found_count}/{total} pairs...")
 
-    with open(f"{output_dir}/dumped.json", "w") as f:
+    with open(f"{sys.argv[3]}", "w") as f:
         json.dump(dumped_events, f)
 
     print(f"Done. Extracted {found_count} inlining pairs.")

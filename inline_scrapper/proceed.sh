@@ -36,7 +36,9 @@ OPT_LEVEL="${6:--O2}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 INLINE_EXTRACTOR="${SCRIPT_DIR}/inline_extractor.py"
-INLINE_FINAL="${SCRIPT_DIR}/inline_final.py"
+CALL_EXTRACTOR="${SCRIPT_DIR}/call_extractor.py"
+EXTRACTOR_FINAL="${SCRIPT_DIR}/extractor_final.py"
+UNITER_FINAL="${SCRIPT_DIR}/uniter.py"
 
 if [[ ! -d "$PROJECT_PATH" ]]; then
   echo "Error: project directory not found: $PROJECT_PATH" >&2
@@ -53,8 +55,13 @@ if [[ ! -f "$INLINE_EXTRACTOR" ]]; then
   exit 1
 fi
 
-if [[ ! -f "$INLINE_FINAL" ]]; then
-  echo "Error: inline_final.py not found next to the script: $INLINE_FINAL" >&2
+if [[ ! -f "$CALL_EXTRACTOR" ]]; then
+  echo "Error: call_extractor.py not found next to the script: $CALL_EXTRACTOR" >&2
+  exit 1
+fi
+
+if [[ ! -f "$EXTRACTOR_FINAL" ]]; then
+  echo "Error: extractor_final.py not found next to the script: $EXTRACTOR_FINAL" >&2
   exit 1
 fi
 
@@ -62,13 +69,17 @@ mkdir -p "$OUTPUT_DIR"
 
 INLINE_JSON="${OUTPUT_DIR}/inline_data.json"
 INLINE_CSV="${OUTPUT_DIR}/inline_data.csv"
-FINAL_DIR="${OUTPUT_DIR}/inline_cases"
+
+OTHER_EVENTS_JSON="${OUTPUT_DIR}/other_events.json"
+
+DUMPED_INLINES_JSON="${OUTPUT_DIR}/dumped_inlines.json"
+DUMPED_OTHER_JSON="${OUTPUT_DIR}/dumped_other.json"
+FINAL_RESULT="${OUTPUT_DIR}/result.csv"
+
 LOG_FILE="${OUTPUT_DIR}/pipeline.log"
 
-mkdir -p "$FINAL_DIR"
-
 {
-  echo "== Inline pipeline started =="
+  echo "== Pipeline started =="
   echo "Project      : $PROJECT_PATH"
   echo "Build command: $BUILD_COMMAND"
   echo "Output dir   : $OUTPUT_DIR"
@@ -95,16 +106,65 @@ if [[ ! -f "$INLINE_JSON" ]]; then
 fi
 
 echo | tee -a "$LOG_FILE"
-echo "== Step 2: running inline_final.py ==" | tee -a "$LOG_FILE"
-python3 "$INLINE_FINAL" \
+echo "== Step 2: running call_extractor.py ==" | tee -a "$LOG_FILE"
+python3 "$CALL_EXTRACTOR" \
+  --project-root "$PROJECT_PATH" \
+  --fake-libc "$FAKE_LIBS" \
+  --inline-json "$INLINE_JSON" \
+  --output-json "$OTHER_EVENTS_JSON" \
+  2>&1 | tee -a "$LOG_FILE"
+
+if [[ ! -f "$OTHER_EVENTS_JSON" ]]; then
+  echo "Error: non-inline events JSON was not generated: $OTHER_EVENTS_JSON" >&2
+  exit 1
+fi
+
+echo | tee -a "$LOG_FILE"
+echo "== Step 3: running extractor_final.py for inline events ==" | tee -a "$LOG_FILE"
+python3 "$EXTRACTOR_FINAL" \
   "$INLINE_JSON" \
   "$PROJECT_PATH" \
-  "$FINAL_DIR" \
-  "$FAKE_LIBS" 2>&1 | tee -a "$LOG_FILE"
+  "$DUMPED_INLINES_JSON" \
+  "$FAKE_LIBS" \
+  2>&1 | tee -a "$LOG_FILE"
+
+if [[ ! -f "$DUMPED_INLINES_JSON" ]]; then
+  echo "Error: dumped inline JSON was not generated: $DUMPED_INLINES_JSON" >&2
+  exit 1
+fi
+
+echo | tee -a "$LOG_FILE"
+echo "== Step 4: running extractor_final.py for non-inline events ==" | tee -a "$LOG_FILE"
+python3 "$EXTRACTOR_FINAL" \
+  "$OTHER_EVENTS_JSON" \
+  "$PROJECT_PATH" \
+  "$DUMPED_OTHER_JSON" \
+  "$FAKE_LIBS" \
+  2>&1 | tee -a "$LOG_FILE"
+
+if [[ ! -f "$DUMPED_OTHER_JSON" ]]; then
+  echo "Error: dumped other JSON was not generated: $DUMPED_OTHER_JSON" >&2
+  exit 1
+fi
+
+echo | tee -a "$LOG_FILE"
+echo "== Step 5: Result merging ==" | tee -a "$LOG_FILE"
+python3 "$UNITER_FINAL" \
+  --other "$DUMPED_OTHER_JSON" \
+  --inlines "$DUMPED_INLINES_JSON" \
+  -o "$FINAL_RESULT" \
+  2>&1 | tee -a "$LOG_FILE"
+
+if [[ ! -f "$FINAL_RESULT" ]]; then
+  echo "Error: final CSV was not generated: $FINAL_RESULT" >&2
+  exit 1
+fi
 
 echo | tee -a "$LOG_FILE"
 echo "== Done ==" | tee -a "$LOG_FILE"
-echo "JSON      : $INLINE_JSON" | tee -a "$LOG_FILE"
-echo "CSV       : $INLINE_CSV" | tee -a "$LOG_FILE"
-echo "Final dir : $FINAL_DIR" | tee -a "$LOG_FILE"
-echo "Log       : $LOG_FILE" | tee -a "$LOG_FILE"
+echo "Inline events   : $INLINE_JSON" | tee -a "$LOG_FILE"
+echo "Inline csv      : $INLINE_CSV" | tee -a "$LOG_FILE"
+echo "Other events    : $OTHER_EVENTS_JSON" | tee -a "$LOG_FILE"
+echo "Dumped inlines  : $DUMPED_INLINES_JSON" | tee -a "$LOG_FILE"
+echo "Dumped other    : $DUMPED_OTHER_JSON" | tee -a "$LOG_FILE"
+echo "Log             : $LOG_FILE" | tee -a "$LOG_FILE"
