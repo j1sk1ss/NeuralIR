@@ -24,15 +24,11 @@ class IRAction(Enum):
 class IRSubject:
     def __str__(self) -> str:
         return "subject"
-
-_global_lb_id: int = 0
-
+    
 class IRLabel(IRSubject):
-    def __init__(self) -> None:
+    def __init__(self, lb_id: int) -> None:
         super().__init__()
-        global _global_lb_id
-        self.id: int = _global_lb_id
-        _global_lb_id += 1
+        self.id: int = lb_id
         
     def __str__(self) -> str:
         return f"lb{self.id}"

@@ -3,11 +3,81 @@ from typing import Optional
 
 from parser.tokenizer import Token, ScopeToken
 from parser.uast import (
-    UastNode, FunctionNode, FunctionCallNode,
+    UastNode, FunctionNode, FunctionCallNode, SyscallNode,
     RExitNode, LoopNode, SwitchNode, DeclarationNode,
     BinaryNode, UnaryNode, ConditionNode, ElseNode, 
     ConditionElseNode, Operations, BreakNode
 )
+
+SYSCALL_NAMES: set = {
+    "accept", "accept4", "access", "acct", "add_key", "adjtimex", "alarm",
+    "bind", "bpf", "brk",
+    "capget", "capset", "chdir", "chmod", "chown", "chroot", "clock_adjtime",
+    "clock_getres", "clock_gettime", "clock_nanosleep", "clock_settime",
+    "clone", "clone3", "close", "close_range", "connect", "copy_file_range",
+    "creat",
+    "delete_module", "dup", "dup2", "dup3",
+    "epoll_create", "epoll_create1", "epoll_ctl", "epoll_pwait",
+    "epoll_pwait2", "epoll_wait", "eventfd", "eventfd2", "execve", "execveat",
+    "_exit", "_Exit", "exit_group",
+    "faccessat", "faccessat2", "fadvise64", "fallocate", "fanotify_init",
+    "fanotify_mark", "fchdir", "fchmod", "fchmodat", "fchown", "fchownat",
+    "fcntl", "fdatasync", "fgetxattr", "flistxattr", "flock", "fork",
+    "fremovexattr", "fsconfig", "fsetxattr", "fsmount", "fsopen", "fspick",
+    "fstat", "fstatfs", "fsync", "ftruncate", "futex", "futex_waitv",
+    "futimesat",
+    "getcpu", "getcwd", "getdents", "getdents64", "getegid", "geteuid",
+    "getgid", "getgroups", "getitimer", "getpeername", "getpgid", "getpgrp",
+    "getpid", "getppid", "getpriority", "getrandom", "getresgid",
+    "getresuid", "getrlimit", "getrusage", "getsid", "getsockname",
+    "getsockopt", "gettid", "gettimeofday", "getuid",
+    "inotify_add_watch", "inotify_init", "inotify_init1", "inotify_rm_watch",
+    "io_cancel", "io_destroy", "io_getevents", "io_pgetevents", "io_setup",
+    "io_submit", "io_uring_enter", "io_uring_register", "io_uring_setup",
+    "ioctl", "ioperm", "iopl",
+    "kcmp", "kexec_load", "keyctl", "kill",
+    "landlock_add_rule", "landlock_create_ruleset", "landlock_restrict_self",
+    "lchown", "lgetxattr", "link", "linkat", "listen", "listxattr", "llistxattr",
+    "lookup_dcookie", "lremovexattr", "lseek", "lsetxattr", "lstat",
+    "madvise", "mbind", "membarrier", "memfd_create", "migrate_pages", "mincore",
+    "mkdir", "mkdirat", "mknod", "mknodat", "mlock", "mlock2", "mlockall",
+    "mmap", "mount", "mount_setattr", "move_mount", "move_pages", "mprotect",
+    "mq_getsetattr", "mq_notify", "mq_open", "mq_timedreceive", "mq_timedsend",
+    "mq_unlink", "mremap", "msgctl", "msgget", "msgrcv", "msgsnd", "msync",
+    "munlock", "munlockall", "munmap", "name_to_handle_at", "nanosleep",
+    "newfstatat",
+    "open", "openat", "openat2", "pause", "pidfd_getfd", "pidfd_open",
+    "pidfd_send_signal", "pipe", "pipe2", "pivot_root", "poll", "ppoll",
+    "prctl", "pread64", "preadv", "preadv2", "prlimit64", "process_madvise",
+    "process_mrelease", "process_vm_readv", "process_vm_writev", "pselect",
+    "ptrace", "pwrite64", "pwritev", "pwritev2",
+    "quotactl", "quotactl_fd",
+    "read", "readahead", "readlink", "readlinkat", "readv", "reboot",
+    "recvfrom", "recvmmsg", "recvmsg", "remap_file_pages", "removexattr",
+    "rename", "renameat", "renameat2", "request_key", "restart_syscall",
+    "rmdir", "rseq", "rt_sigaction", "rt_sigpending", "rt_sigprocmask",
+    "rt_sigqueueinfo", "rt_sigreturn", "rt_sigsuspend", "rt_sigtimedwait",
+    "rt_tgsigqueueinfo",
+    "sched_getaffinity", "sched_getattr", "sched_getparam", "sched_get_priority_max",
+    "sched_get_priority_min", "sched_getscheduler", "sched_rr_get_interval",
+    "sched_setaffinity", "sched_setattr", "sched_setparam", "sched_setscheduler",
+    "sched_yield", "seccomp", "select", "semctl", "semget", "semop", "semtimedop",
+    "sendfile", "sendmmsg", "sendmsg", "sendto", "setfsgid", "setfsuid",
+    "setgid", "setgroups", "sethostname", "setitimer", "setns", "setpgid",
+    "setpriority", "setregid", "setresgid", "setresuid", "setreuid", "setrlimit",
+    "setsid", "setsockopt", "settimeofday", "setuid", "setxattr", "shmat",
+    "shmctl", "shmdt", "shmget", "shutdown", "sigaltstack", "signalfd",
+    "signalfd4", "sigprocmask", "socket", "socketpair", "splice", "stat",
+    "statfs", "statx", "swapoff", "swapon", "symlink", "symlinkat", "sync",
+    "sync_file_range", "syncfs", "syscall", "sysinfo",
+    "tee", "tgkill", "time", "timer_create", "timer_delete", "timer_getoverrun",
+    "timer_gettime", "timer_settime", "timerfd_create", "timerfd_gettime",
+    "timerfd_settime", "times", "tkill", "truncate",
+    "umask", "umount2", "uname", "unlink", "unlinkat", "unshare", "userfaultfd",
+    "ustat", "utime", "utimensat", "utimes",
+    "vfork", "vmsplice",
+    "wait4", "waitid", "waitpid", "write", "writev"
+}
 
 C_BINARY_OPERATOR_MAP = {
     "+":   Operations.ADD,
@@ -131,7 +201,10 @@ class PycparserToUast:
 
         if isinstance(node, c_ast.FuncCall):
             name_str = _expr_to_str(node.name) if node.name else "<?>"
-            u = FunctionCallNode(_make_token("Call", name_str, node.coord))
+            if name_str in SYSCALL_NAMES:
+                u = SyscallNode(_make_token("Syscall", name_str, node.coord))
+            else: 
+                u = FunctionCallNode(_make_token("Call", name_str, node.coord))
 
             if node.args:
                 args_u = self.convert(node.args)

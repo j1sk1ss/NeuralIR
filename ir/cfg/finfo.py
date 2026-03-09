@@ -43,10 +43,10 @@ def gather_function_info(f: CFGFunction) -> CFGFunctionInfo:
     for bb in f.blocks:
         ir_count += len(bb.instrs)
         for inst in bb.instrs:
-            if inst.a == IRAction.FCALL:
+            if inst.a in (IRAction.FCALL, IRAction.SCALL):
                 funccalls += 1
-            elif inst.a == IRAction.SCALL:
-                syscalls += 1
+                if inst.a == IRAction.SCALL:
+                    syscalls += 1
 
     is_start = f.func in { "main", "_start", "start" }
     return CFGFunctionInfo(

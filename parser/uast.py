@@ -69,6 +69,13 @@ class FunctionCallNode(UastNode):
     def __str__(self) -> str:
         return f"FunctionCallNode(name={self.token.value})"
         
+class SyscallNode(FunctionCallNode):
+    def __init__(self, token: Token) -> None:
+        super().__init__(token)
+        
+    def __str__(self) -> str:
+        return f"SyscallNode(name={self.token.value})"
+        
 class RExitNode(UastNode):
     def __init__(self, token: Token) -> None:
         super().__init__(token)

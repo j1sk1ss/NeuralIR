@@ -1,0 +1,72 @@
+{
+    function foo(i32 a) -> i32 {
+        i32 i = 0;
+        while i < 10; {
+            a += 1;
+            i += 1;
+        }
+
+        return a;
+    }
+
+    start(ptr i32 a) {
+        while 1; {
+            while 1; {
+                ptr ptr i32 b = ref a;
+                dref b = foo(1);
+            }
+
+            dref a = foo(2);
+        }
+    }
+}
+
+: OUTPUT
+[ 0] define function(foo) { 
+[ 1]     declaration(operation(i32)) 
+[ 2]     lb0: 
+[ 3]     loop untill { 
+[ 4]         some operation 
+[ 5]         if, true: lb1, else: lb2) { 
+[ 6]             lb1: 
+[ 7]             some operation 
+[ 8]             some operation 
+[ 9]             jump to lb0 
+[10]             lb2: 
+             }
+[11]         stop 
+         }
+[12]     function_end 
+[13]     define function(start) { 
+[14]         lb3: 
+[15]         loop untill { 
+[16]             if, true: lb4, else: lb5) { 
+[17]                 lb4: 
+[18]                 lb6: 
+[19]                 loop untill { 
+[20]                     if, true: lb7, else: lb8) { 
+[21]                         lb7: 
+[22]                         declaration(operation(ptr ptr i32)) 
+[23]                         reference of something 
+[24]                         dereference of something 
+[25]                         call function(foo)() 
+[26]                         some operation 
+[27]                         jump to lb6 
+[28]                         lb8: 
+[29]                         dereference of something 
+[30]                         call function(foo)() 
+[31]                         some operation 
+[32]                         jump to lb3 
+[33]                         lb5: 
+                         }
+[34]                     function_end 
+                     }
+                 }
+             }
+         }
+     }
+{'owner': 'start', 'block_id': 7, 'action': 'fcall', 'called_function': 'foo', 'instruction_info': {'is_dom': False, 'same_inst_after': 0, 'same_inst_before': 0, 'near_break': -1}, 'loop_info': {'loop_size_bb': 2, 'loop_size_ir': 12, 'loop_nested': 1}}
+{'owner': 'start', 'block_id': 8, 'action': 'fcall', 'called_function': 'foo', 'instruction_info': {'is_dom': False, 'same_inst_after': 0, 'same_inst_before': 0, 'near_break': -1}, 'loop_info': {'loop_size_bb': 5, 'loop_size_ir': 24, 'loop_nested': 0}}
+function=foo, info={'name': 'foo', 'info': {'bb_count': 4, 'ir_count': 16, 'is_start': False, 'funccalls': 0, 'syscalls': 0}}
+function=start, info={'name': 'start', 'info': {'bb_count': 6, 'ir_count': 27, 'is_start': True, 'funccalls': 2, 'syscalls': 0}}
+:

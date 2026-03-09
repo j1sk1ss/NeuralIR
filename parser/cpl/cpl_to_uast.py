@@ -3,7 +3,7 @@ from typing import List
 
 from parser.tokenizer import ScopeToken, Token
 from parser.uast import (
-    UastNode, FunctionNode, FunctionCallNode,
+    UastNode, FunctionNode, FunctionCallNode, SyscallNode,
     RExitNode, LoopNode, SwitchNode, DeclarationNode,
     BinaryNode, UnaryNode, ConditionNode, ElseNode,
     Operations, BreakNode
@@ -213,7 +213,7 @@ class CplParser:
             fn.add_child(self.parse_param_list())
         self.expect(")")
 
-        if self.at("=>"):
+        if self.at("->"):
             self.consume()
             self.parse_type()
 
@@ -416,7 +416,7 @@ class CplParser:
 
     def parse_syscall(self) -> UastNode:
         kw = self.expect("syscall")
-        call = FunctionCallNode(kw)
+        call = SyscallNode(kw)
         self.expect("(")
         if not self.at(")"):
             call.add_child(self.parse_expression())
@@ -685,7 +685,7 @@ OPERATORS = [
     "+=","-=","*=","/=","%=",
     "|=","^=","&=",
     "||","&&",
-    "=>",
+    "->",
     "=","<",">","+","-","*","/","%","|","^","&"
 ]
 

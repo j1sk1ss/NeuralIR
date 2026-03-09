@@ -1,4 +1,4 @@
-from ir.cfg.cfg import CFGBlock, CFGFunction
+from ir.cfg.cfg import CFGFunction
 
 def complete_successors(funcs: list[CFGFunction]) -> None:
     for func in funcs:

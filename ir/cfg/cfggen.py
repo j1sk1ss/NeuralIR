@@ -25,62 +25,6 @@ def _split_by_function(instructions: list[IRBlock]) -> dict[str, list[IRBlock]]:
 
     return output
 
-_global_func_id: int = 0
-_global_block_id: int = 0
-
-def get_blocks_from_ir(instructions: list[IRBlock]) -> list[CFGFunction]:
-    global _global_block_id, _global_func_id
-    output: list[CFGFunction] = []
-    prepared: dict[str, list[IRBlock]] = _split_by_function(instructions=instructions)
-
-    for fname, instrs in prepared.items():
-        func = CFGFunction(id=_global_func_id, func=fname, blocks=[])
-        output.append(func)
-        _global_func_id += 1
-
-        if not instrs:
-            continue
-
-        current_block: list[IRBlock] = []
-        start_idx = 0
-        
-        for idx, inst in enumerate(instrs):
-            if idx == 0 or inst.a == IRAction.MKLB:
-                if current_block:
-                    func.blocks.append(CFGBlock(
-                        id=_global_block_id,
-                        start=start_idx,
-                        end=idx - 1,
-                        instrs=current_block.copy()
-                    ))
-                    _global_block_id += 1
-                    current_block.clear()
-                
-                start_idx = idx
-            
-            current_block.append(inst)
-            
-            if inst.a in {IRAction.JMP, IRAction.IF} or (idx + 1 < len(instrs) and instrs[idx + 1].a == IRAction.MKLB):
-                func.blocks.append(CFGBlock(
-                    id=_global_block_id,
-                    start=start_idx,
-                    end=idx,
-                    instrs=current_block.copy()
-                ))
-                _global_block_id += 1
-                current_block.clear()
-        
-        if current_block:
-            func.blocks.append(CFGBlock(
-                id=_global_block_id,
-                start=start_idx,
-                end=len(instrs) - 1,
-                instrs=current_block.copy()
-            ))
-            _global_block_id += 1
-
-    return output
-
 def _find_labeled_block(blocks: list[CFGBlock], label: IRLabel) -> CFGBlock | None:
     for block in blocks:
         if not block.instrs:
@@ -92,33 +36,97 @@ def _find_labeled_block(blocks: list[CFGBlock], label: IRLabel) -> CFGBlock | No
             return block
     return None
 
-def link_blocks(funcs: list[CFGFunction]) -> None:
-    for func in funcs:
-        for b in func.blocks:
-            b.jmp = None
-            b.lin = None
+class CFGContext:
+    def __init__(self) -> None:
+        self.function_id: int = 0
+        self.block_id: int = 0
 
-        for i, block in enumerate(func.blocks):
-            if not block.instrs:
-                if i + 1 < len(func.blocks):
-                    block.lin = func.blocks[i + 1]
+    def get_next_function_id(self) -> int:
+        current: int = self.function_id
+        self.function_id += 1
+        return current
+
+    def get_next_block_id(self) -> int:
+        current: int = self.block_id
+        self.block_id += 1
+        return current
+
+    def get_blocks_from_ir(self, instructions: list[IRBlock]) -> list[CFGFunction]:
+        output: list[CFGFunction] = []
+        prepared: dict[str, list[IRBlock]] = _split_by_function(instructions=instructions)
+
+        for fname, instrs in prepared.items():
+            func = CFGFunction(id=self.get_next_function_id(), func=fname, blocks=[])
+            output.append(func)
+
+            if not instrs:
                 continue
 
-            last = block.instrs[-1]
-
-            if last.a == IRAction.JMP:
-                block.jmp = _find_labeled_block(func.blocks, last.subjects[0])
-            elif last.a == IRAction.IF:
-                block.lin = _find_labeled_block(func.blocks, last.subjects[0])
-                block.jmp = _find_labeled_block(func.blocks, last.subjects[1])
-            elif last.a not in { IRAction.TERM, IRAction.FEND } and i + 1 < len(func.blocks):
-                block.lin = func.blocks[i + 1]
+            current_block: list[IRBlock] = []
+            start_idx = 0
+            
+            for idx, inst in enumerate(instrs):
+                if idx == 0 or inst.a == IRAction.MKLB:
+                    if current_block:
+                        func.blocks.append(CFGBlock(
+                            id=self.get_next_block_id(),
+                            start=start_idx,
+                            end=idx - 1,
+                            instrs=current_block.copy()
+                        ))
+                        
+                        current_block.clear()
+                    
+                    start_idx = idx
                 
-            block.instrs.insert(0, IRBaseBlockLabel(block.id))
+                current_block.append(inst)
+                if inst.a in { IRAction.JMP, IRAction.IF } or (idx + 1 < len(instrs) and instrs[idx + 1].a == IRAction.MKLB):
+                    func.blocks.append(CFGBlock(
+                        id=self.get_next_block_id(),
+                        start=start_idx,
+                        end=idx,
+                        instrs=current_block.copy()
+                    ))
+                    current_block.clear()
             
-def give_flatten_instructions(f: CFGFunction) -> list[IRBlock]:
-    instrs: list[IRBlock] = []
-    for bb in f.blocks:
-        instrs.extend(bb.instrs)
-    return instrs
-            
+            if current_block:
+                func.blocks.append(CFGBlock(
+                    id=self.get_next_block_id(),
+                    start=start_idx,
+                    end=len(instrs) - 1,
+                    instrs=current_block.copy()
+                ))
+
+        return output
+
+    @staticmethod
+    def link_blocks(funcs: list[CFGFunction]) -> None:
+        for func in funcs:
+            for b in func.blocks:
+                b.jmp = None
+                b.lin = None
+
+            for i, block in enumerate(func.blocks):
+                if not block.instrs:
+                    if i + 1 < len(func.blocks):
+                        block.lin = func.blocks[i + 1]
+                    continue
+
+                last = block.instrs[-1]
+
+                if last.a == IRAction.JMP:
+                    block.jmp = _find_labeled_block(func.blocks, last.subjects[0])
+                elif last.a == IRAction.IF:
+                    block.lin = _find_labeled_block(func.blocks, last.subjects[0])
+                    block.jmp = _find_labeled_block(func.blocks, last.subjects[1])
+                elif last.a not in { IRAction.TERM, IRAction.FEND } and i + 1 < len(func.blocks):
+                    block.lin = func.blocks[i + 1]
+                    
+                block.instrs.insert(0, IRBaseBlockLabel(block.id))
+                
+    @staticmethod
+    def give_flatten_instructions(f: CFGFunction) -> list[IRBlock]:
+        instrs: list[IRBlock] = []
+        for bb in f.blocks:
+            instrs.extend(bb.instrs)
+        return instrs

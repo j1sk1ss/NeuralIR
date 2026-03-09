@@ -1,0 +1,22 @@
+{
+    function foo() {
+        syscall(1, 2, 3);
+    }
+    start() {
+        foo();
+    }
+}
+
+: OUTPUT
+[0] define function(foo) { 
+[1]     syscall 
+    }
+[2] function_end 
+[3] define function(start) { 
+[4]     call function(foo)() 
+    }
+[5] function_end 
+{'owner': 'start', 'block_id': 1, 'action': 'fcall', 'called_function': 'foo', 'instruction_info': {'is_dom': False, 'same_inst_after': 0, 'same_inst_before': 0, 'near_break': -1}, 'loop_info': {}}
+function=foo, info={'name': 'foo', 'info': {'bb_count': 1, 'ir_count': 3, 'is_start': False, 'funccalls': 1, 'syscalls': 1}}
+function=start, info={'name': 'start', 'info': {'bb_count': 1, 'ir_count': 3, 'is_start': True, 'funccalls': 1, 'syscalls': 0}}
+:

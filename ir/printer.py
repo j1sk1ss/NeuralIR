@@ -57,6 +57,8 @@ def pretty_print_ir(
             return f"declaration({subs[0]})"
         if a == IRAction.FCALL and subs[0]:
             return f"call {subs[0]}()"
+        if a == IRAction.SCALL:
+            return "syscall"
         if a == IRAction.SCALL and subs[0]:
             return f"syscall"
         if a == IRAction.JMP and subs[0]:

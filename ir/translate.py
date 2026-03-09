@@ -4,7 +4,7 @@ from ir.instr.ir_block import (
 )
 
 from parser.uast import (
-    UastNode, FunctionNode, FunctionCallNode,
+    UastNode, FunctionNode, FunctionCallNode, SyscallNode,
     RExitNode, LoopNode, SwitchNode, DeclarationNode,
     BinaryNode, UnaryNode, ConditionNode, ElseNode, 
     ConditionElseNode, BreakNode, Operations
@@ -15,6 +15,12 @@ class Translator:
         self.root: UastNode = root
         self.ctx: list[IRBlock] = []
         self.brk_ctx: list[IRLabel] = []
+        self.lb_id: int = 0
+        
+    def get_next_label_id(self) -> int:
+        current: int = self.lb_id
+        self.lb_id += 1
+        return current
         
     def translate(self) -> list[IRBlock]:
         self.translate_uast_node(self.root)
@@ -26,6 +32,8 @@ class Translator:
         
         if isinstance(node, FunctionNode):
             self.translate_function_node(node)
+        elif isinstance(node, SyscallNode):
+            self.translate_syscall_node(node)
         elif isinstance(node, FunctionCallNode):
             self.translate_funccall_node(node)
         elif isinstance(node, RExitNode):
@@ -62,6 +70,10 @@ class Translator:
         self.translate_uast_node(node.get_args())
         self.ctx.append(IRBlock(a=IRAction.FCALL, x=IRFunction(name=node.get_name())))
     
+    def translate_syscall_node(self, node: SyscallNode) -> None:
+        self.translate_uast_node(node.get_args())
+        self.ctx.append(IRBlock(a=IRAction.SCALL))
+    
     def translate_rexit_node(self, node: RExitNode) -> None:
         self.translate_uast_node(node.get_retval())
         self.ctx.append(IRBlock(a=IRAction.TERM))
@@ -72,9 +84,9 @@ class Translator:
             self.ctx.append(IRBlock(a=IRAction.JMP, x=self.brk_ctx[-1]))
     
     def translate_loop_node(self, node: LoopNode) -> None:
-        entry_lb: IRSubject = IRLabel()
-        body_lb: IRSubject  = IRLabel()
-        exit_lb: IRSubject  = IRLabel()
+        entry_lb: IRSubject = IRLabel(lb_id=self.get_next_label_id())
+        body_lb: IRSubject  = IRLabel(lb_id=self.get_next_label_id())
+        exit_lb: IRSubject  = IRLabel(lb_id=self.get_next_label_id())
         self.ctx.append(IRBlock(a=IRAction.MKLB, x=entry_lb))
         self.ctx.append(IRBlock(a=IRAction.LOOP))
         
@@ -95,8 +107,8 @@ class Translator:
         
         case_index: int = 0
         while node.get_case(case_index):
-            true_lb: IRSubject  = IRLabel()
-            false_lb: IRSubject = IRLabel()
+            true_lb: IRSubject  = IRLabel(lb_id=self.get_next_label_id())
+            false_lb: IRSubject = IRLabel(lb_id=self.get_next_label_id())
             self.ctx.append(IRBlock(a=IRAction.IF, x=true_lb, y=false_lb))
             self.ctx.append(IRBlock(a=IRAction.MKLB, x=true_lb))
             self.brk_ctx.append(false_lb)
@@ -126,8 +138,8 @@ class Translator:
         self.ctx.append(IRBlock(a=irop, x=IROperation(op=node.get_op().name)))
     
     def translate_condition_node(self, node: ConditionNode) -> None:
-        true_lb: IRSubject  = IRLabel()
-        false_lb: IRSubject = IRLabel()
+        true_lb: IRSubject  = IRLabel(lb_id=self.get_next_label_id())
+        false_lb: IRSubject = IRLabel(lb_id=self.get_next_label_id())
         self.ctx.append(IRBlock(a=IRAction.IF, x=true_lb, y=false_lb))
         self.translate_uast_node(node.get_cond())
         

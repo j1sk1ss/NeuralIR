@@ -6,10 +6,7 @@ from ir.translate import Translator
 from ir.cfg.cfg import CFGFunction
 from ir.instr.ir_block import IRAction
 from ir.printer import PrintStyle, pretty_print_ir
-from ir.cfg.cfggen import (
-    get_blocks_from_ir,
-    link_blocks
-)
+from ir.cfg.cfggen import CFGContext
 
 from ir.cfg.dom import (
     complete_successors,
@@ -82,8 +79,9 @@ class ProgramAnalysis:
         ir_blocks = translator.translate()
         self.ir_form_debug = pretty_print_ir(blocks=ir_blocks, style=PrintStyle(show_index=True))
 
-        funcs = get_blocks_from_ir(ir_blocks)
-        link_blocks(funcs)
+        cfgctx: CFGContext = CFGContext()
+        funcs = cfgctx.get_blocks_from_ir(ir_blocks)
+        CFGContext.link_blocks(funcs)
         complete_successors(funcs)
 
         for f in funcs:
@@ -91,7 +89,6 @@ class ProgramAnalysis:
             compute_strict_dom(f)
 
         self.loops = generate_loop_tree(funcs)
-
         for f in funcs:
             self.functions[f.func] = self._build_function_analysis(f)
 
