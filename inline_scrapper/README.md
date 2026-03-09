@@ -34,7 +34,8 @@ To scrap all essential information, you will need:
 <fake_libs_path> \  # You already have this path
 <compiler>          # Actually, this is an optional argument, but make sure that you're using the gcc compiler
 ``` 
-5. The expected information will be stored in the output directory.
+5. The expected information will be stored in the output directory. </br>
+*You will need three particular files: dumped_inlines.json, dumpe_other.json and result.csv*
 
 # P.S.
 These tools for C/C++ languages only (And for gcc only). Other languages and compilers will require independent set of tools.
